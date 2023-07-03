@@ -1,0 +1,30 @@
+[
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_dataProvider",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "_owner",
+                "type": "address"
+            },
+            {
+                "internalType": "string",
+                "name": "_name",
+                "type": "string"
+            },
+            {
+                "internalType": "bool",
+                "name": "_enterAndApprove",
+                "type": "bool"
+            }
+        ],
+        "name": "init",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]

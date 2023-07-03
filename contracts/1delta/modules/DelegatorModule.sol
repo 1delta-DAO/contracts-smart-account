@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: BUSL-1.1
+
+pragma solidity ^0.8.20;
+
+import {LibStorage, WithStorage} from "../libraries/LibStorage.sol";
+import {IAccountFactory} from "../interfaces/IAccountFactory.sol";
+
+/**
+ * @title Delegator contract
+ * @notice Allows users to name managers. These have rights over managing the account.
+ * Managers cannot withdraw funds from the account, but open and close trading positions
+ * @author Achthar
+ */
+contract DelegatorModule is WithStorage {
+    modifier onlyOwner() {
+        LibStorage.enforceAccountOwner();
+        _;
+    }
+
+    function addManager(address _newManager) external onlyOwner {
+        us().managers[_newManager] = true;
+    }
+
+    function removeManager(address _manager) external onlyOwner {
+        us().managers[_manager] = false;
+    }
+
+    function isManager(address _manager) external view returns (bool) {
+        return us().managers[_manager];
+    }
+
+    function transferAccountOwnership(address _newOwner) external onlyOwner {
+        IAccountFactory(gs().factory).handleTransferAccount(_newOwner);
+        us().previousAccountOwner = us().accountOwner;
+        us().accountOwner = _newOwner;
+    }
+}

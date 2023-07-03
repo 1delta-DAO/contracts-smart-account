@@ -1,0 +1,183 @@
+
+const uniswapAddresses = {
+    factory: {
+        5: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+        80001: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+        137: '0x1F98431c8aD98523631AE4a59f267346ea31F984'
+    },
+    router: {
+        5: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+        80001: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+        137: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+    }
+}
+
+const generalAddresses = {
+    WETH: {
+        5: '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6',
+        80001: '0x9c3c9283d3e44854697cd22d3faa240cfb032889',
+        137: '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270'
+    }
+}
+
+const aaveAddresses = {
+    v3pool: {
+        5: '0x7b5C526B7F8dfdff278b4a3e045083FBA4028790'
+    }
+}
+
+const marginSwapAddresses = {
+    Diamond: {
+        5: '0x41E9a4801D7AE2f032cF37Bf262339Eddd00a06c',
+        80001: '',
+        137: ''
+    },
+    ConfigModule: {
+        5: '0x461fD0dB6874EC6361835Ef6d73F740Dd1B0a1e3',
+        80001: '',
+        137: ''
+    },
+    LensModule: {
+        5: '0xBD6Aa391858ff37c27464BC06E25D4493F1df124',
+        80001: '',
+        137: ''
+    },
+    OwnershipModule: {
+        5: '0xA5f5BD6729a811082881D5c80eD0cc27FEBCc855',
+        80001: '',
+        137: ''
+    },
+    ManagementModule: {
+        5: '0xd6bFcD2e9AD9A5F338B096Bae6480E0c856D66B1',
+        80001: '',
+        137: ''
+    },
+    AAVEMarginTraderModule: {
+        5: '0x3B6e3D60aFa7D1BEAFc8902849f15115ce839b10',
+        80001: '',
+        137: ''
+    },
+    AAVEMoneyMarketModule: {
+        5: '0x8AE1a341C21d6D03bdEe3251B0FCf8f8b9A2D0a2',
+        80001: '',
+        137: ''
+    },
+    MarginTradeDataViewerModule: {
+        5: '0xa001f661C293753F642Cfa807C2Fc98625Be3A17',
+        80001: '',
+        137: ''
+    },
+    UniswapV3SwapCallbackModule: {
+        5: '0xC4c383c17b5aE30070DdCf5E44b5c1b1F804C69e',
+        80001: '',
+        137: ''
+    },
+    // external
+    minimalRouter: {
+        5: '0x247c9795279B7258E5EEf89Ae9cF531DbB4E3b95',
+        80001: '0x2c4c27Ec2d61A434Db076f9ec0a91A7c0F5d595c',
+        137: '0x97148db25672d106F5ADD5dE734F0eb0360290a0'
+    }
+}
+
+const marginSwapAccountAddresses = {
+    moduleManager: {
+        5: '0xA1648E8Fb1aBA314bA053ee1dBE025448E0c52e1',
+        80001: '0x2E5134f3Af641C8A9B8B0893023a19d47699ECD1',
+        137: '0x108A3fa74ac2448b9A2007aeF60faFc51f242A5D' // prev 0xeaddcf13e44a43184df069122681e0a563acdeee
+    },
+    delegator: {
+        5: '0x07aa9242097FFE0Da685a6448dfa7B7830C6929A',
+        80001: '0x9a11804262cCdACdD9cb1cF69F243F38e81Cb36A',
+        137: '0xeeB5A6c0BEF5a018e627878197777E3d64bfA010'
+    },
+    accountInit: {
+        5: '0x525d646eCf5202cC604c88b17D49e55eb802DF86',
+        80001: '0x84362c9055BC35d970f32727F82332170f7d062f',
+        137: '0x427F927524174c436e52A6cF67DB33AB4260BDc8'
+    },
+    marginTrader: {
+        5: '0xBC81B9423aa6d9dCbFaCCC69047264e7ff262AE6',
+        80001: '0xc72B831e7bB400484a081b7e2D95bbDb6742DD83',
+        137: '0x1B5a7b2DA1Be9EFE8e858645A296641FBeFAd909'
+    },
+    moneyMarket: {
+        5: '0x12c61518c6e59e9b1Eb46Bb58512696a52c67BAC',
+        80001: '0xf613F68188cf811a755Eab7cbD3AD1Bf99a64814',
+        137: '0x0cCfb90D93f901b1F2DD9FCd17F37bdBA14bB67d', // '0x06E1C32e300Adf3Ca9ab17E669ea1f414a55AE87' // prev'0x4fEf72A9B061de5803a0d9631231f922919a1469'
+    },
+    uniswapCallback: {
+        5: '0x3bdA8e1FF902F185174295437f4C8cb0a18854F2',
+        80001: '0xF8749c00De20F7f94E62312d6E8182269E0c9Dbb',
+        137: '0x5DF0CA18A1aC7D3f388F7b29F8349B534343A691' //'0x8ddc6f87C3bEFe4EAcC7BdFF44e2c5B771CA6D15', // prev '0x131770781Ce40A249D43c63d4b0b598580EC58b1' 
+    },
+    sweeper: {
+        5: '0x9a81727D61e4D6C966c181DaCE99F80a0B1eE01e',
+        80001: '0xA9FcA7CEb6f1e21D5e196cF0fc74F6eA645c82e1',
+        137: '0x507764CEF2308a11CD4D0517CF3CA230b3640D22'
+    },
+    admin: {
+        5: '0x6CE3C84fBb0C6138516425eAeD60e5804315D99d',
+        80001: '0xc447b7e5eD021862498102A0abe46814d5155BF9',
+        137: '0xAca0774c71a6e1Fecc1341FF3ffE627f03890e32'
+    },
+    tokenManager: {
+        5: '0x362FdA0586E66A06e263db3EDCA917cEBD3e921E',
+        80001: '0xA2E045E423CA9955a2940b3BA00AbC7b2E8307c6',
+        137: '0xdd2D3574e6D3D76764FA1e539BCF9044D1960f38'
+    },
+    accountFactoryProxy: {
+        5: '0x9D0980F620081158Fb2E915404A49A36F92899ef',
+        80001: '0xC2ef8d1288982451eEfB20671153CF14fa22e72A',
+        137: '0x36E5e5e12782389359dFc89A7C3BAAA6E39666AA'
+    },
+    accountFactoryLogic: {
+        5: '0x54B04bA307A52A1e53911f8D6f6D148510204689',
+        80001: '0xE0E43892492aF2fB92BC393d8b7E13d591cA8C2F',
+        137: '0x77158F652c661f4896682d6d4899933943E66123'
+    },
+    dataProviderLogic: {
+        5: '0x0395e8042683bcE168C400CaBDBaa13A459d1B27',
+        80001: '0x56353409aa02F732f8104BB00A84E4805d2F6Fc8',
+        137: '0xcaE5981af4Df837AFDFeF5Ee678Aae48decFB920'
+    },
+    dataProviderProxy: {
+        5: '0x178E4EB141BBaEAcd56DAE120693D48d4B5f198d',
+        80001: '0xcDa12Fd8b678C71F883d1EF89a496ac1D68B7c50',
+        137: '0x847cC690bdA67B100A564528D70886C116d72DD1'
+    }
+}
+
+const compoundAddresses = {
+    cCOMP: '0x0fF50a12759b081Bb657ADaCf712C52bb015F1Cd',
+    cDAI: '0x0545a8eaF7ff6bB6F708CbB544EA55DBc2ad7b2a',
+    cETH: '0x64078a6189Bf45f80091c6Ff2fCEe1B15Ac8dbde',
+    cUNI: '0x2073d38198511F5Ed8d893AB43A03bFDEae0b1A5',
+    cUSDC: '0x73506770799Eb04befb5AaE4734e58C2C624F493',
+    cUSDT: '0x5A74332C881Ea4844CcbD8458e0B6a9B04ddb716',
+    cWBTC: '0xDa6F609F3636062E06fFB5a1701Df3c5F1ab3C8f',
+    COMP: '0x3587b2F7E0E2D6166d6C14230e7Fe160252B0ba4',
+    DAI: '0x2899a03ffDab5C90BADc5920b4f53B0884EB13cC',
+    UNI: '0x208F73527727bcB2D9ca9bA047E3979559EB08cC',
+    USDC: '0x07865c6E87B9F70255377e024ace6630C1Eaa37F',
+    USDT: '0x79C950C7446B234a6Ad53B908fBF342b01c4d446',
+    WBTC: '0xAAD4992D949f9214458594dF92B44165Fb84dC19',
+    CompoundLens: '0x04EC9f6Ce8ca39Ee5c7ADE95C69e38ddcaA8CbB7',
+    Unitroller: '0x3cBe63aAcF6A064D32072a630A3eab7545C54d78',
+    Comptroller: '0x05Df6C772A563FfB37fD3E04C1A279Fb30228621',
+    Fauceteer: '0x75442Ac771a7243433e033F3F8EaB2631e22938f',
+    GovernorBravo: '0xa3FbaE9180a3c835C1F8688383989bB5558245d3',
+    Maximillion: '0xD4936082B4F93D9D2B79418765854A00f320Defb',
+    PriceOracle: '0x65F19195e488B9C1A1Ac08ca115f197C992bC776',
+    Timelock: '0x8Fa336EB4bF58Cfc508dEA1B0aeC7336f55B1399',
+}
+
+
+module.exports = {
+    uniswapAddresses,
+    generalAddresses,
+    aaveAddresses,
+    marginSwapAddresses,
+    compoundAddresses,
+    marginSwapAccountAddresses
+}
