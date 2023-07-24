@@ -12,10 +12,12 @@ import {IModuleProvider} from "./interfaces/IModuleProvider.sol";
 
 contract OneDeltaAccount {
     // provider is immutable and therefore stored in the bytecode
-    IModuleProvider private immutable _moduleProvider;
+    address private immutable _moduleProvider;
+    // selector for module fetching
+    bytes4 private immutable SELECTOR = 0xd88f725a; //=bytes4(abi.encodeWithSignature("selectorToModule(bytes4)"))
 
     function moduleProvider() external view returns (IModuleProvider) {
-        return _moduleProvider;
+        return IModuleProvider(_moduleProvider);
     }
 
     // the constructor only initializes the module provider
@@ -28,7 +30,7 @@ contract OneDeltaAccount {
         ds.factory = msg.sender;
 
         // assign immutable
-        _moduleProvider = IModuleProvider(provider);
+        _moduleProvider = provider;
     }
 
     // An efficient multicall implementation for 1delta Accounts across multiple modules
@@ -36,7 +38,7 @@ contract OneDeltaAccount {
     function multicall(address[] calldata modules, bytes[] calldata data) external payable returns (bytes[] memory results) {
         results = new bytes[](data.length);
         // we check that all modules exist in a single call
-        _moduleProvider.validateModules(modules);
+        IModuleProvider(_moduleProvider).validateModules(modules);
         for (uint256 i = 0; i < data.length; i++) {
             (bool success, bytes memory result) = modules[i].delegatecall(data[i]);
 
@@ -56,19 +58,52 @@ contract OneDeltaAccount {
     // Find module for function that is called and execute the
     // function if a module is found and return any value.
     fallback() external payable {
-        // get module from function selector
-        address module = _moduleProvider.selectorToModule(msg.sig);
-        require(module != address(0), "OneDeltaAccount: Function does not exist");
-        // Execute external function from module using delegatecall and return any value.
+        bytes4 fnSig = SELECTOR;
+        bytes4 callSignature = msg.sig;
+        address moduleSlot = _moduleProvider;
         assembly {
+            // 1) FETCH MODULE
+            // Get the free memory address with the free memory pointer
+            let params := mload(0x40)
+
+            // We store 0x24 bytes, so we increment the free memory pointer
+            // by that exact amount to keep things in order
+            mstore(0x40, add(params, 0x24))
+
+            // Store fnSig at params : here we store 32 bytes : 4 bytes of fnSig and 28 bytes of RIGHT padding
+            mstore(params, fnSig)
+
+            // Store callSignature at params + 0x4 : overwriting the 28 bytes of RIGHT padding included before
+            mstore(add(params, 0x4), callSignature)
+
+            // gas : 5000 for module fetch
+            // address : moduleSlot -> moduleProvider
+            // argsOffset : encoded : msg.sig
+            // argsSize : 0x24
+            // retOffset : params
+            // retSize : address size
+            let success := staticcall(5000, moduleSlot, params, 0x24, params, 0x20)
+
+            if eq(success, 0) {
+                revert(params, 0x40)
+            }
+
+            moduleSlot := mload(params)
+
+            // revert if module address is zero
+            if eq(moduleSlot, 0) {
+                revert(0, 0)
+            }
+
+            // 2) EXECUTE DELEGATECALL ON FETCHED MODULE
             // copy function selector and any arguments
             calldatacopy(0, 0, calldatasize())
             // execute function call using the module
-            let result := delegatecall(gas(), module, 0, calldatasize(), 0, 0)
+            success := delegatecall(gas(), moduleSlot, 0, calldatasize(), 0, 0)
             // get any return value
             returndatacopy(0, 0, returndatasize())
             // return any return value or error back to the caller
-            switch result
+            switch success
             case 0 {
                 revert(0, returndatasize())
             }
