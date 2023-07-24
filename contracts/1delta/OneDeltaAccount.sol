@@ -88,6 +88,7 @@ contract OneDeltaAccount {
                 revert(params, 0x40)
             }
 
+            // overwrite the moduleSlot parameter with the fetched module address (if valid)
             moduleSlot := mload(params)
 
             // revert if module address is zero
