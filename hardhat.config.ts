@@ -426,7 +426,7 @@ const config: HardhatUserConfig = {
     compilers: [
       // 1delta
       {
-        version: '0.8.20',
+        version: '0.8.21',
         settings: {
           optimizer: {
             enabled: true,
@@ -507,7 +507,7 @@ const config: HardhatUserConfig = {
         },
       },
       "contracts/external-protocols/compound/Comptroller.sol": {
-        version: "0.8.20",
+        version: "0.8.21",
         settings: {
           evmVersion: 'london',
           optimizer: {
@@ -520,7 +520,7 @@ const config: HardhatUserConfig = {
         },
       },
       "contracts/external-protocols/compound/ComptrollerG7.sol": {
-        version: "0.8.20",
+        version: "0.8.21",
         settings: {
           evmVersion: 'london',
           optimizer: {
@@ -543,7 +543,7 @@ const config: HardhatUserConfig = {
         },
       },
       "contracts/external-protocols/compound/test/ComptrollerHarness.sol": {
-        version: "0.8.20",
+        version: "0.8.21",
         settings: {
           evmVersion: 'london',
           optimizer: {
@@ -556,7 +556,7 @@ const config: HardhatUserConfig = {
         },
       },
       "contracts/external-protocols/compound/test/ComptrollerScenario.sol": {
-        version: "0.8.20",
+        version: "0.8.21",
         settings: {
           evmVersion: 'london',
           optimizer: {
@@ -569,7 +569,7 @@ const config: HardhatUserConfig = {
         },
       },
       "contracts/external-protocols/compound/test/CErc20Harness.sol": {
-        version: "0.8.20",
+        version: "0.8.21",
         settings: {
           evmVersion: 'london',
           optimizer: {

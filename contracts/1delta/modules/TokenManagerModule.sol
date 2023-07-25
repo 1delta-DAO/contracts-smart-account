@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.21;
 
 import "../libraries/LibStorage.sol";
 import {TransferHelper} from "../dex-tools/uniswap/libraries/TransferHelper.sol";
