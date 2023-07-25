@@ -12,12 +12,10 @@ import {IModuleProvider} from "./interfaces/IModuleProvider.sol";
 
 contract OneDeltaAccount {
     // provider is immutable and therefore stored in the bytecode
-    address private immutable _moduleProvider;
-    // selector for module fetching
-    bytes4 private immutable SELECTOR = 0xd88f725a; //=bytes4(abi.encodeWithSignature("selectorToModule(bytes4)"))
+    address private immutable MODULE_PROVIDER;
 
     function moduleProvider() external view returns (IModuleProvider) {
-        return IModuleProvider(_moduleProvider);
+        return IModuleProvider(MODULE_PROVIDER);
     }
 
     // the constructor only initializes the module provider
@@ -30,7 +28,7 @@ contract OneDeltaAccount {
         ds.factory = msg.sender;
 
         // assign immutable
-        _moduleProvider = provider;
+        MODULE_PROVIDER = provider;
     }
 
     // An efficient multicall implementation for 1delta Accounts across multiple modules
@@ -38,7 +36,7 @@ contract OneDeltaAccount {
     function multicall(address[] calldata modules, bytes[] calldata data) external payable returns (bytes[] memory results) {
         results = new bytes[](data.length);
         // we check that all modules exist in a single call
-        IModuleProvider(_moduleProvider).validateModules(modules);
+        IModuleProvider(MODULE_PROVIDER).validateModules(modules);
         for (uint256 i = 0; i < data.length; i++) {
             (bool success, bytes memory result) = modules[i].delegatecall(data[i]);
 
@@ -58,9 +56,8 @@ contract OneDeltaAccount {
     // Find module for function that is called and execute the
     // function if a module is found and return any value.
     fallback() external payable {
-        bytes4 fnSig = SELECTOR;
         bytes4 callSignature = msg.sig;
-        address moduleSlot = _moduleProvider;
+        address moduleSlot = MODULE_PROVIDER;
         assembly {
             // 1) FETCH MODULE
             // Get the free memory address with the free memory pointer
@@ -70,8 +67,9 @@ contract OneDeltaAccount {
             // by that exact amount to keep things in order
             mstore(0x40, add(params, 0x24))
 
-            // Store fnSig at params : here we store 32 bytes : 4 bytes of fnSig and 28 bytes of RIGHT padding
-            mstore(params, fnSig)
+            // Store fnSig (=bytes4(abi.encodeWithSignature("selectorToModule(bytes4)"))) at params
+            // - here we store 32 bytes : 4 bytes of fnSig and 28 bytes of RIGHT padding
+            mstore(params, 0xd88f725a00000000000000000000000000000000000000000000000000000000)
 
             // Store callSignature at params + 0x4 : overwriting the 28 bytes of RIGHT padding included before
             mstore(add(params, 0x4), callSignature)
@@ -84,7 +82,7 @@ contract OneDeltaAccount {
             // retSize : address size
             let success := staticcall(5000, moduleSlot, params, 0x24, params, 0x20)
 
-            if eq(success, 0) {
+            if iszero(success) {
                 revert(params, 0x40)
             }
 
@@ -92,7 +90,7 @@ contract OneDeltaAccount {
             moduleSlot := mload(params)
 
             // revert if module address is zero
-            if eq(moduleSlot, 0) {
+            if iszero(moduleSlot) {
                 revert(0, 0)
             }
 
