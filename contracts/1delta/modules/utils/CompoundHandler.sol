@@ -10,11 +10,12 @@ import {IERC20} from "../../dex-tools/uniswap/libraries/TransferHelper.sol";
 import {IDataProvider, ICompoundTypeCERC20, ICompoundTypeCEther} from "../../interfaces/IDataProvider.sol";
 import {WithStorage} from "../../libraries/LibStorage.sol";
 import {INativeWrapper} from "../../interfaces/INativeWrapper.sol";
+import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
 
 // solhint-disable max-line-length
 
 /// @title Module for handling transfers from and to the Compound protocol
-abstract contract CompoundHandler is WithStorage {
+abstract contract CompoundHandler is WithStorage, TokenTransfer {
     address private immutable nativeWrapper;
 
     constructor(address _weth) {
@@ -32,14 +33,14 @@ abstract contract CompoundHandler is WithStorage {
         address _nativeWrapper = nativeWrapper;
         if (token == _nativeWrapper && address(this).balance >= value) {
             // pay with nativeWrapper
-            INativeWrapper(_nativeWrapper).deposit{value: value}(); // wrap only what is needed to pay
-            INativeWrapper(_nativeWrapper).transfer(msg.sender, value);
+            _depositWeth(_nativeWrapper, value); // wrap only what is needed to pay
+            _transferERC20Tokens(_nativeWrapper, msg.sender, value);
         } else if (payer == address(this)) {
             // pay with tokens already in the contract (for the exact input multihop case)
-            IERC20(token).transfer(msg.sender, value);
+            _transferERC20Tokens(token, msg.sender, value);
         } else {
             // pull payment
-            IERC20(token).transferFrom(payer, msg.sender, value);
+            _transferERC20TokensFrom(token, payer, msg.sender, value);
         }
     }
 
@@ -72,12 +73,12 @@ abstract contract CompoundHandler is WithStorage {
             // withdraw WETH
             INativeWrapper(_nativeWrapper).deposit{value: valueToWithdraw}(); // unwrap
             // transfer WETH
-            IERC20(_nativeWrapper).transfer(recipient, valueToWithdraw);
+            _transferERC20Tokens(_nativeWrapper, recipient, valueToWithdraw);
         } else {
             // deposit regular ERC20
             cToken(token).redeemUnderlying(valueToWithdraw);
             // repay ERC20
-            IERC20(token).transfer(recipient, valueToWithdraw);
+            _transferERC20Tokens(token, recipient, valueToWithdraw);
         }
     }
 
@@ -100,14 +101,14 @@ abstract contract CompoundHandler is WithStorage {
             // withdraw WETH
             INativeWrapper(_nativeWrapper).deposit{value: underlyingAmount}(); // unwrap
             // transfer WETH
-            IERC20(_nativeWrapper).transfer(recipient, underlyingAmount);
+            _transferERC20Tokens(_nativeWrapper, recipient, underlyingAmount);
         } else {
             // deposit regular ERC20
             cToken(token).redeemUnderlying(underlyingAmount);
             // record balance
             underlyingAmount = IERC20(token).balanceOf(address(this));
             // repay ERC20
-            IERC20(token).transfer(recipient, underlyingAmount);
+            _transferERC20Tokens(token, recipient, underlyingAmount);
         }
     }
 
@@ -123,14 +124,14 @@ abstract contract CompoundHandler is WithStorage {
             // withdraw WETH
             INativeWrapper(_nativeWrapper).deposit{value: underlyingAmount}(); // unwrap
             // transfer WETH
-            IERC20(_nativeWrapper).transfer(recipient, underlyingAmount);
+            _transferERC20Tokens(_nativeWrapper, recipient, underlyingAmount);
         } else {
             // deposit regular ERC20
             cToken(token).redeem(cToken(token).balanceOf((address(this))));
             // record balance of this account
             underlyingAmount = IERC20(token).balanceOf(address(this));
             // repay ERC20
-            IERC20(token).transfer(recipient, underlyingAmount);
+            _transferERC20Tokens(token, recipient, underlyingAmount);
         }
     }
 
@@ -167,12 +168,12 @@ abstract contract CompoundHandler is WithStorage {
             // deposit ETH for wETH
             INativeWrapper(_nativeWrapper).deposit{value: valueToBorrow}();
             // transfer WETH
-            IERC20(_nativeWrapper).transfer(recipient, valueToBorrow);
+            _transferERC20Tokens(_nativeWrapper, recipient, valueToBorrow);
         } else {
             // borrow regular ERC20
             cToken(token).borrow(valueToBorrow);
             // transfer ERC20
-            IERC20(token).transfer(recipient, valueToBorrow);
+            _transferERC20Tokens(token, recipient, valueToBorrow);
         }
     }
 

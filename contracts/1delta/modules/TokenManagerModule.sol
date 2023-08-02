@@ -3,9 +3,9 @@
 pragma solidity ^0.8.21;
 
 import "../libraries/LibStorage.sol";
-import {TransferHelper} from "../dex-tools/uniswap/libraries/TransferHelper.sol";
 import {LibStorage} from "../libraries/LibStorage.sol";
 import {IDataProvider} from "../interfaces/IDataProvider.sol";
+import {TokenTransfer} from "../libraries/TokenTransfer.sol";
 
     enum Error {
         NO_ERROR,
@@ -35,7 +35,7 @@ import {IDataProvider} from "../interfaces/IDataProvider.sol";
  * @notice Allows interaction of account contract with any tokens of which there are balances
  * @author Achthar
  */
-contract TokenManagerModule is WithStorage {
+contract TokenManagerModule is WithStorage, TokenTransfer {
     modifier onlyOwner() {
         LibStorage.enforceAccountOwner();
         _;
@@ -46,11 +46,11 @@ contract TokenManagerModule is WithStorage {
         address _spender,
         uint256 _amountToApprove
     ) external onlyOwner {
-        TransferHelper.safeApprove(_token, _spender, _amountToApprove);
+        _approve(_token, _spender, _amountToApprove);
     }
 
     function withdrawToken(address _token, uint256 _amountToWithdraw) external onlyOwner {
-        TransferHelper.safeTransfer(_token, msg.sender, _amountToWithdraw);
+        _transferERC20Tokens(_token, msg.sender, _amountToWithdraw);
     }
 
     function withdrawEther(address payable _recipient, uint256 _amountToWithdraw) external onlyOwner {
@@ -61,9 +61,9 @@ contract TokenManagerModule is WithStorage {
         for (uint256 i = 0; i < _cTokens.length; i++) {
             address _cToken = _cTokens[i];
             address _underlying = address(IDataProvider(ps().dataProvider).underlying(_cToken));
-            TransferHelper.safeApprove(_cToken, _cToken, type(uint256).max);
+            _approve(_cToken, _cToken, type(uint256).max);
             if (_underlying != address(0)) {
-                TransferHelper.safeApprove(_underlying, _cToken, type(uint256).max);
+                _approve(_underlying, _cToken, type(uint256).max);
             }
         }
     }

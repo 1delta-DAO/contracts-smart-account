@@ -2,15 +2,13 @@
 pragma solidity 0.8.21;
 
 import '../../../interfaces/IERC20.sol';
-
 import '../interfaces/IPeripheryPayments.sol';
 import '../interfaces/external/IWETH9.sol';
-
 import '../libraries/TransferHelper.sol';
-
 import './PeripheryImmutableState.sol';
+import {TokenTransfer} from "../../../libraries/TokenTransfer.sol";
 
-abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableState {
+abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableState, TokenTransfer {
     receive() external payable {
         require(msg.sender == WETH9, 'Not WETH9');
     }
@@ -22,7 +20,7 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
 
         if (balanceWETH9 > 0) {
             IWETH9(WETH9).withdraw(balanceWETH9);
-            TransferHelper.safeTransferETH(recipient, balanceWETH9);
+            _transferEth(recipient, balanceWETH9);
         }
     }
 
@@ -36,13 +34,13 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
         require(balanceToken >= amountMinimum, 'Insufficient token');
 
         if (balanceToken > 0) {
-            TransferHelper.safeTransfer(token, recipient, balanceToken);
+            _transferERC20Tokens(token, recipient, balanceToken);
         }
     }
 
     /// @inheritdoc IPeripheryPayments
     function refundETH() external payable override {
-        if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
+        if (address(this).balance > 0) _transferEth(msg.sender, address(this).balance);
     }
 
     /// @param token The token to pay
@@ -55,14 +53,14 @@ abstract contract PeripheryPayments is IPeripheryPayments, PeripheryImmutableSta
     ) internal {
         if (token == WETH9 && address(this).balance >= value) {
             // pay with WETH9
-            IWETH9(WETH9).deposit{value: value}(); // wrap only what is needed to pay
-            IWETH9(WETH9).transfer(msg.sender, value);
+            _depositWeth(WETH9, value); // wrap only what is needed to pay
+            _transferERC20Tokens(WETH9, msg.sender, value);
         } else if (payer == address(this)) {
             // pay with tokens already in the contract (for the exact input multihop case)
-            TransferHelper.safeTransfer(token, msg.sender, value);
+            _transferERC20Tokens(token, msg.sender, value);
         } else {
             // pull payment
-            TransferHelper.safeTransferFrom(token, payer, msg.sender, value);
+            _transferERC20TokensFrom(token, payer, msg.sender, value);
         }
     }
 }

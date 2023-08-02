@@ -11,13 +11,11 @@ import {
     } from "../../dataTypes/InputTypes.sol";
 import {INativeWrapper} from "../../interfaces/INativeWrapper.sol";
 import {IUniswapV3Pool} from "../../../external-protocols/uniswapV3/core/interfaces/IUniswapV3Pool.sol";
-
-import {TransferHelper} from "../../dex-tools/uniswap/libraries/TransferHelper.sol";
+import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
 import {PoolAddressCalculator} from "../../dex-tools/uniswap/libraries/PoolAddressCalculator.sol";
 import {CallbackData} from "../../dex-tools/uniswap/DataTypes.sol";
 import {Path} from "../../dex-tools/uniswap/libraries/Path.sol";
 import "../../dex-tools/uniswap/libraries/SafeCast.sol";
-
 import "../../../external-protocols/uniswapV3/periphery/interfaces/ISwapRouter.sol";
 import "../../../external-protocols/uniswapV3/core/interfaces/callback/IUniswapV3SwapCallback.sol";
 import {WithStorage, LibStorage} from "../../libraries/LibStorage.sol";
@@ -34,7 +32,7 @@ import "./BaseLendingHandler.sol";
  * This cannot always work in swap scenarios with withdrawals, however, for repaying debt, the methods are consistent.
  * @author Achthar
  */
-abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapDataHolder {
+abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapDataHolder, TokenTransfer {
     using Path for bytes;
     using SafeCast for uint256;
 
@@ -90,7 +88,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
 
     function repayBorrowAll(address _underlying) external onlyOwner {
         uint256 _repayAmount = borrowBalanceCurrent(_underlying);
-        TransferHelper.safeTransferFrom(_underlying, msg.sender, address(this), _repayAmount);
+        _transferERC20TokensFrom(_underlying, msg.sender, address(this), _repayAmount);
         repayPrivate(_underlying, _repayAmount);
     }
 
@@ -115,7 +113,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
         address tokenIn = params.path.getFirstToken();
 
         // approve router
-        TransferHelper.safeApprove(tokenIn, router, type(uint256).max);
+        _approve(tokenIn, router, type(uint256).max);
         // set amount in for Uniswap
         amountOut = IMinimalSwapRouter(router).exactInput(
             ExactInputParams({path: params.path, amountIn: redeemAllCTokenAndKeep(tokenIn), recipient: params.recipient})
@@ -127,7 +125,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
     function withdrawAndSwapAllInToETH(AllInputMultiParamsBaseWithRecipient calldata params) external onlyOwner returns (uint256 amountOut) {
         address tokenIn = params.path.getFirstToken();
         // approve router
-        TransferHelper.safeApprove(tokenIn, router, type(uint256).max);
+        _approve(tokenIn, router, type(uint256).max);
         // set amount in for Uniswap
         amountOut = IMinimalSwapRouter(router).exactInputToSelf(
             MinimalExactInputMultiParams({path: params.path, amountIn: redeemAllCTokenAndKeep(tokenIn)})

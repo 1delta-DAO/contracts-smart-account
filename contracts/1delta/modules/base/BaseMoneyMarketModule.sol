@@ -15,16 +15,14 @@ import {
  } from "../../dataTypes/InputTypes.sol";
 
 import {SafeCast} from "../../dex-tools/uniswap/core/SafeCast.sol";
-import {TransferHelper} from "../../dex-tools/uniswap/libraries/TransferHelper.sol";
+import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
 import {IUniswapV3Pool} from "../../dex-tools/uniswap/core/IUniswapV3Pool.sol";
 import {PoolAddressCalculator} from "../../dex-tools/uniswap/libraries/PoolAddressCalculator.sol";
 import {Path} from "../../dex-tools/uniswap/libraries/Path.sol";
-
 import {ICompoundTypeCERC20} from "../../interfaces/compound/ICompoundTypeCERC20.sol";
 import {ICompoundTypeCEther} from "../../interfaces/compound/ICompoundTypeCEther.sol";
 import {INativeWrapper} from "../../interfaces/INativeWrapper.sol";
 import "../../libraries/LibStorage.sol";
-
 import {IERC20} from "../../interfaces/IERC20.sol";
 import "../../../periphery-standalone/interfaces/IMinimalSwapRouter.sol";
 import "./BaseLendingHandler.sol";
@@ -36,7 +34,7 @@ import {UniswapDataHolder} from "../utils/UniswapDataHolder.sol";
  * @title MoneyMarket Base contract
  * @notice Contains main logic for money market interactions
  */
-abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, UniswapDataHolder {
+abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, UniswapDataHolder, TokenTransfer {
     using Path for bytes;
     using SafeCast for uint256;
 
@@ -64,9 +62,9 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
         for (uint256 i = 0; i < _underlyings.length; i++) {
             address _underlying = _underlyings[i];
             address _cToken = address(cToken(_underlying));
-            TransferHelper.safeApprove(_underlying, _cToken, type(uint256).max);
-            TransferHelper.safeApprove(_underlying, _router, type(uint256).max);
-            TransferHelper.safeApprove(_cToken, _cToken, type(uint256).max);
+            _approve(_underlying, _cToken, type(uint256).max);
+            _approve(_underlying, _router, type(uint256).max);
+            _approve(_cToken, _cToken, type(uint256).max);
         }
     }
 
@@ -77,7 +75,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     // single actions with the lending protocol - all return Compound-type error codes
 
     function mint(address _underlying, uint256 _amountToSupply) external onlyOwner {
-        TransferHelper.safeTransferFrom(_underlying, msg.sender, address(this), _amountToSupply);
+        _transferERC20TokensFrom(_underlying, msg.sender, address(this), _amountToSupply);
         mintPrivate(_underlying, _amountToSupply);
     }
 
@@ -88,7 +86,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     ) external onlyOwner returns (uint256 amountWithdrawn) {
         cToken(_underlying).redeem(_cAmountToRedeem);
         amountWithdrawn = IERC20(_underlying).balanceOf(address(this));
-        TransferHelper.safeTransfer(_underlying, _recipient, amountWithdrawn);
+        _transferERC20Tokens(_underlying, _recipient, amountWithdrawn);
     }
 
     function redeemUnderlying(
@@ -108,7 +106,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     }
 
     function repayBorrow(address _underlying, uint256 _repayAmount) external onlyOwner {
-        TransferHelper.safeTransferFrom(_underlying, msg.sender, address(this), _repayAmount);
+        _transferERC20TokensFrom(_underlying, msg.sender, address(this), _repayAmount);
         repayPrivate(_underlying, _repayAmount);
     }
 
@@ -187,9 +185,9 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     function swapAndSupplyExactIn(ExactInputMultiParams calldata params) external onlyOwner {
         address tokenIn = params.path.getFirstToken();
         uint256 amountIn = params.amountIn;
-        TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
+        _transferERC20TokensFrom(tokenIn, msg.sender, address(this), amountIn);
         // approve minimal router
-        TransferHelper.safeApprove(tokenIn, router, amountIn);
+        _approve(tokenIn, router, amountIn);
         // swap to self
         uint256 amountToSupply = IMinimalSwapRouter(router).exactInputToSelfWithLimit(params);
         // deposit received amount to the lending protocol on behalf of user
@@ -252,7 +250,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
         // withraw and send funds to this address for swaps
         redeemPrivate(tokenIn, amountToWithdraw, address(this));
         // approve router
-        TransferHelper.safeApprove(tokenIn, router, type(uint256).max);
+        _approve(tokenIn, router, type(uint256).max);
         amountOut = IMinimalSwapRouter(router).exactInput(params);
     }
 
@@ -262,7 +260,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
         // withraw and send funds to this address for swaps
         redeemPrivate(tokenIn, amountToWithdraw, address(this));
         // approve router
-        TransferHelper.safeApprove(tokenIn, router, type(uint256).max);
+        _approve(tokenIn, router, type(uint256).max);
         amountOut = IMinimalSwapRouter(router).exactInputToSelfWithLimit(params);
         INativeWrapper(nativeWrapper).withdraw(amountOut);
         payable(msg.sender).transfer(amountOut);
@@ -313,7 +311,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
         // borrow and send funds to this address for swaps
         borrowPrivate(tokenIn, amountIn, address(this));
         // approve minimal router
-        TransferHelper.safeApprove(tokenIn, router, amountIn);
+        _approve(tokenIn, router, amountIn);
         // swap exact in with common router
         amountOut = IMinimalSwapRouter(router).exactInput(params);
     }
@@ -324,7 +322,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
         // borrow and send funds to this address for swaps
         borrowPrivate(tokenIn, amountIn, address(this));
         // approve minimal router
-        TransferHelper.safeApprove(tokenIn, router, amountIn);
+        _approve(tokenIn, router, amountIn);
         // swap exact in with common router
         amountOut = IMinimalSwapRouter(router).exactInputToSelf(MinimalExactInputMultiParams({path: params.path, amountIn: params.amountIn}));
         require(amountOut >= params.amountOutMinimum, "Received too little");
@@ -377,9 +375,9 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     function swapAndRepayExactIn(ExactInputMultiParams calldata params) external onlyOwner returns (uint256 amountOut) {
         address tokenIn = params.path.getFirstToken();
         uint256 amountIn = params.amountIn;
-        TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
+        _transferERC20TokensFrom(tokenIn, msg.sender, address(this), amountIn);
         // approve minimal router
-        TransferHelper.safeApprove(tokenIn, router, amountIn);
+        _approve(tokenIn, router, amountIn);
         // swap to self
         amountOut = IMinimalSwapRouter(router).exactInputToSelfWithLimit(params);
         // deposit received amount to the lending protocol on behalf of user

@@ -17,12 +17,12 @@ import {
     } from "../libraries/LibStorage.sol";
 import {IAccountInit} from "../interfaces/IAccountInit.sol";
 import {IDataProvider} from "../interfaces/IDataProvider.sol";
-import {TransferHelper} from "../dex-tools/uniswap/libraries/TransferHelper.sol";
+import {TokenTransfer} from "../libraries/TokenTransfer.sol";
 
 // Initialies 1Delta user accounts
 // A name can be picked and all relevant underlyings can be set up in the lending protocol if the correct
 // flag is set.
-contract AccountInit is WithStorage, IAccountInit {
+contract AccountInit is WithStorage, IAccountInit, TokenTransfer {
 
     /**
      * @notice The initializer only initializes the module provider, data provider and owner
@@ -45,7 +45,6 @@ contract AccountInit is WithStorage, IAccountInit {
         if(_enterAndApprove){
             enterMarketsOnInit(IDataProvider(dataProvider).allCTokens());
             approveUnderlyingsOnInit(IDataProvider(dataProvider).allUnderlyings());
-            IDataProvider(dataProvider).nativeWrapper().approve(IDataProvider(dataProvider).minimalRouter(), type(uint256).max);
         }
     }
 
@@ -53,8 +52,7 @@ contract AccountInit is WithStorage, IAccountInit {
         for (uint256 i = 0; i < _underlyings.length; i++) {
             address _underlying = _underlyings[i];
             address _cToken = address(IDataProvider(ps().dataProvider).cToken(_underlying));
-            TransferHelper.safeApprove(_underlying, _cToken, type(uint256).max);
-            TransferHelper.safeApprove(_cToken, _cToken, type(uint256).max);
+            _approve(_underlying, _cToken, type(uint256).max);
         }
     }
 

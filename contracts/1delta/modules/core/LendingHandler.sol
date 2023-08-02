@@ -6,15 +6,16 @@ pragma solidity 0.8.21;
 * Author: Achthar
 /******************************************************************************/
 
-import {TransferHelper, IERC20} from "../../dex-tools/uniswap/libraries/TransferHelper.sol";
+import {IERC20} from "../../dex-tools/uniswap/libraries/TransferHelper.sol";
 import {ICompoundTypeCERC20} from "../../interfaces/compound/ICompoundTypeCERC20.sol";
 import {ICompoundTypeCEther} from "../../interfaces/compound/ICompoundTypeCEther.sol";
 import {INativeWrapper} from "../../interfaces/INativeWrapper.sol";
+import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
 
 // solhint-disable max-line-length
 
 /// @title Module for handling transfers from and to the Compound protocol
-abstract contract LendingHandler {
+abstract contract LendingHandler is TokenTransfer {
     address private immutable nativeWrapper;
 
     constructor(address _weth) {
@@ -32,14 +33,14 @@ abstract contract LendingHandler {
         address _nativeWrapper = nativeWrapper;
         if (token == _nativeWrapper && address(this).balance >= value) {
             // pay with nativeWrapper
-            INativeWrapper(_nativeWrapper).deposit{value: value}(); // wrap only what is needed to pay
-            INativeWrapper(_nativeWrapper).transfer(msg.sender, value);
+            _depositWeth(_nativeWrapper, value); // wrap only what is needed to pay
+            _transferERC20Tokens(_nativeWrapper, msg.sender, value);
         } else if (payer == address(this)) {
             // pay with tokens already in the contract (for the exact input multihop case)
-            TransferHelper.safeTransfer(token, msg.sender, value);
+            _transferERC20Tokens(token, msg.sender, value);
         } else {
             // pull payment
-            TransferHelper.safeTransferFrom(token, payer, msg.sender, value);
+            _transferERC20TokensFrom(token, payer, msg.sender, value);
         }
     }
 
@@ -72,12 +73,12 @@ abstract contract LendingHandler {
             // withdraw WETH
             INativeWrapper(_nativeWrapper).deposit{value: valueToWithdraw}(); // unwrap
             // transfer WETH
-            TransferHelper.safeTransfer(_nativeWrapper, recipient, valueToWithdraw);
+            _transferERC20Tokens(_nativeWrapper, recipient, valueToWithdraw);
         } else {
             // deposit regular ERC20
             cToken(token).redeemUnderlying(valueToWithdraw);
             // repay ERC20
-            TransferHelper.safeTransfer(token, recipient, valueToWithdraw);
+            _transferERC20Tokens(token, recipient, valueToWithdraw);
         }
     }
 
@@ -95,12 +96,12 @@ abstract contract LendingHandler {
             // deposit ETH for wETH
             INativeWrapper(_nativeWrapper).deposit{value: valueToBorrow}();
             // transfer WETH
-            TransferHelper.safeTransfer(_nativeWrapper, recipient, valueToBorrow);
+            _transferERC20Tokens(_nativeWrapper, recipient, valueToBorrow);
         } else {
             // borrow regular ERC20
             cToken(token).borrow(valueToBorrow);
             // transfer ERC20
-            TransferHelper.safeTransfer(token, recipient, valueToBorrow);
+            _transferERC20Tokens(token, recipient, valueToBorrow);
         }
     }
 
@@ -135,14 +136,14 @@ abstract contract LendingHandler {
             // withdraw WETH
             INativeWrapper(_nativeWrapper).deposit{value: underlyingAmount}(); // unwrap
             // transfer WETH
-            TransferHelper.safeTransfer(_nativeWrapper, recipient, underlyingAmount);
+            _transferERC20Tokens(_nativeWrapper, recipient, underlyingAmount);
         } else {
             // deposit regular ERC20
             cToken(token).redeem(cTokenAmountToRedeem);
             // record balance
             underlyingAmount = IERC20(token).balanceOf(address(this));
             // repay ERC20
-            TransferHelper.safeTransfer(token, recipient, underlyingAmount);
+            _transferERC20Tokens(token, recipient, underlyingAmount);
         }
     }
 
@@ -158,14 +159,14 @@ abstract contract LendingHandler {
             // withdraw WETH
             INativeWrapper(_nativeWrapper).deposit{value: underlyingAmount}(); // unwrap
             // transfer WETH
-            TransferHelper.safeTransfer(_nativeWrapper, recipient, underlyingAmount);
+            _transferERC20Tokens(_nativeWrapper, recipient, underlyingAmount);
         } else {
             // deposit regular ERC20
             cToken(token).redeem(cToken(token).balanceOf((address(this))));
             // record balance of this account
             underlyingAmount = IERC20(token).balanceOf(address(this));
             // repay ERC20
-            TransferHelper.safeTransfer(token, recipient, underlyingAmount);
+            _transferERC20Tokens(token, recipient, underlyingAmount);
         }
     }
 
