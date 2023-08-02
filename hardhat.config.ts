@@ -465,6 +465,27 @@ const config: HardhatUserConfig = {
           evmVersion: 'london',
         },
       },
+      // Uniswap V2
+      {
+        version: '0.6.6',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 999999,
+          },
+          evmVersion: 'istanbul',
+        },
+      },
+      {
+        version: '0.5.16',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 999999,
+          },
+          evmVersion: 'istanbul',
+        },
+      }
     ],
     overrides: {
       "contracts/external-protocols/aave-v3-core/protocol/pool/Pool.sol": {

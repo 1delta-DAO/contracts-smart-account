@@ -17,6 +17,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { FeeAmount, TICK_SPACINGS } from '../../uniswap-v3/periphery/shared/constants'
 import { getMaxTick, getMinTick } from '../../uniswap-v3/periphery/shared/ticks'
 import { encodePriceSqrt } from '../../uniswap-v3/periphery/shared/encodePriceSqrt'
+import { V2Fixture } from './uniV2Fixture'
 
 export interface UniswapFixture {
     weth9: IWETH9
@@ -195,4 +196,41 @@ export async function addLiquidity(
     console.log("add liquidity", tokenAddressA, tokenAddressB)
 
     return uniswap.nft.connect(signer).mint(liquidityParams)
+}
+
+const overrides = {
+    gasLimit: 9999999
+  }
+
+
+export async function addLiquidityV2(
+    signer: SignerWithAddress,
+    tokenAddressA: string,
+    tokenAddressB: string,
+    amountA: BigNumber,
+    amountB: BigNumber,
+    uniswap: V2Fixture
+) {
+    if (tokenAddressA.toLowerCase() > tokenAddressB.toLowerCase())
+        [tokenAddressA, tokenAddressB, amountA, amountB] = [tokenAddressB, tokenAddressA, amountB, amountA]
+    const tA = await new ethers.Contract(tokenAddressA, IERC20__factory.createInterface(), signer)
+    await tA.connect(signer).approve(uniswap.router02.address, constants.MaxUint256)
+
+    const tB = await new ethers.Contract(tokenAddressB, IERC20__factory.createInterface(), signer)
+    await tB.connect(signer).approve(uniswap.router02.address, constants.MaxUint256)
+
+    console.log("add liquidity V2", tokenAddressA, tokenAddressB)
+
+    await uniswap.router02.addLiquidity(
+        tokenAddressA,
+        tokenAddressB,
+        amountA,
+        amountB,
+        0,
+        0,
+        signer.address,
+        constants.MaxUint256,
+        overrides
+    )
+
 }
