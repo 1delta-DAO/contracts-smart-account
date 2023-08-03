@@ -121,4 +121,16 @@ contract DataProvider is DataProviderStorageGenesis {
     function minimalRouter() external view returns (address) {
         return _minimalRouter;
     }
+
+    function cTokenPair(address _underlying, address _underlyingOther) external view returns (address _cToken, address _cTokenOther) {
+        _cToken = _cTokens[_underlying];
+        require(_cToken != address(0), "invalid cToken");
+        _cTokenOther = _cTokens[_underlyingOther];
+        require(_cTokenOther != address(0), "invalid cTokenOther");
+    }
+
+    function cTokenAddress(address _underlying) external view returns (address _cToken) {
+        _cToken = _cTokens[_underlying];
+        require(_cToken != address(0), "invalid cToken");
+    }
 }

@@ -185,7 +185,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
     // margin trader functions
 
     // swaps the loan from one token (tokenIn) to another (tokenOut) provided tokenOut amount
-    function swapBorrowAllOutMulti(AllOutputMultiParamsBase calldata params) external onlyOwner returns (uint256 amountIn) {
+    function swapBorrowAllOut(AllOutputMultiParamsBase calldata params) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
 
         MarginCallbackData memory data = MarginCallbackData({
@@ -211,7 +211,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
     }
 
     // swaps the collateral from one token (tokenIn) to another (tokenOut) provided tokenOut amount
-    function swapCollateralAllInMulti(AllInputMultiParamsBase calldata params) external onlyOwner returns(uint256 amountOut) {
+    function swapCollateralAllIn(AllInputMultiParamsBase calldata params) external onlyOwner returns(uint256 amountOut) {
         (address tokenIn, address tokenOut, uint24 fee) = params.path.decodeFirstPool();
         MarginCallbackData memory data = MarginCallbackData({
             path: params.path,

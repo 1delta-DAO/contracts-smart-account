@@ -53,7 +53,7 @@ describe('Margin Multi Swap operations', async () => {
 
         uniswap = await uniswapFixture(deployer, 5)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9)
+
 
 
 
@@ -115,6 +115,8 @@ describe('Margin Multi Swap operations', async () => {
 
 
         compound = await generateCompoundFixture(deployer, opts)
+
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
         await accountFixture.dataProvider.setCEther(compound.cEther.address)
@@ -846,23 +848,22 @@ describe('Margin Multi Swap operations', async () => {
 // |                                      Solc version: 0.8.21                                      ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
 // ·································································································|···························|·················|······························
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactIn           ·     686523  ·     798277  ·         753523  ·            3  ·          -  │
+// |  MarginTraderModule                                   ·  openMarginPositionExactIn           ·     680350  ·     793753  ·         747900  ·            3  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactInToETH      ·          -  ·          -  ·         747039  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  openMarginPositionExactInToETH      ·          -  ·          -  ·         742803  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactOut          ·     669227  ·     770617  ·         708992  ·            4  ·          -  │
+// |  MarginTraderModule                                   ·  openMarginPositionExactOut          ·     664447  ·     767486  ·         705037  ·            4  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactOutToETH     ·     680823  ·     707991  ·         694407  ·            2  ·          -  │
+// |  MarginTraderModule                                   ·  openMarginPositionExactOutToETH     ·     677984  ·     705152  ·         691568  ·            2  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  trimMarginPositionExactIn           ·     417449  ·     650726  ·         563684  ·            3  ·          -  │
+// |  MarginTraderModule                                   ·  trimMarginPositionExactIn           ·     412925  ·     644553  ·         558706  ·            3  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  trimMarginPositionExactOut          ·          -  ·          -  ·         588087  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  trimMarginPositionExactOut          ·          -  ·          -  ·         583299  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  trimMarginPositionAllIn             ·          -  ·          -  ·         652599  ·            1  ·          -  │
+// |  SweeperModule                                        ·  trimMarginPositionAllIn             ·          -  ·          -  ·         648448  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  trimMarginPositionAllOut            ·          -  ·          -  ·         635971  ·            1  ·          -  │
+// |  SweeperModule                                        ·  trimMarginPositionAllOut            ·          -  ·          -  ·         633183  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-
 
 
 

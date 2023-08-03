@@ -8,6 +8,8 @@ pragma solidity 0.8.21;
 
 import "../core/CoreUniswapV3CallbackModule.sol";
 import {OTokenData, IComptroller} from "./OTokenData.sol";
+import {ICompoundTypeCERC20} from "../../interfaces/compound/ICompoundTypeCERC20.sol";
+import {ICompoundTypeCEther} from "../../interfaces/compound/ICompoundTypeCEther.sol";
 
 // solhint-disable max-line-length
 
@@ -27,7 +29,11 @@ contract UniswapCallbackModulePolygon is OTokenData, CoreUniswapV3CallbackModule
         return _cEther();
     }
 
-    function getComptroller() internal view override returns (IComptroller) {
+    function getComptroller() internal view returns (IComptroller) {
         return _getComptroller();
     }
+
+    function cTokenPair(address underlying, address underlyingOther) internal view override returns (address, address) {}
+
+    function cTokenAddress(address underlying) internal view override returns (address) {}
 }

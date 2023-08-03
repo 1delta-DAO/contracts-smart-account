@@ -23,28 +23,6 @@ abstract contract LendingHandler is TokenTransfer {
     }
 
     /// @param token The token to pay
-    /// @param payer The entity that must pay
-    /// @param value The amount to pay
-    function pay(
-        address token,
-        address payer,
-        uint256 value
-    ) internal virtual {
-        address _nativeWrapper = nativeWrapper;
-        if (token == _nativeWrapper && address(this).balance >= value) {
-            // pay with nativeWrapper
-            _depositWeth(_nativeWrapper, value); // wrap only what is needed to pay
-            _transferERC20Tokens(_nativeWrapper, msg.sender, value);
-        } else if (payer == address(this)) {
-            // pay with tokens already in the contract (for the exact input multihop case)
-            _transferERC20Tokens(token, msg.sender, value);
-        } else {
-            // pull payment
-            _transferERC20TokensFrom(token, payer, msg.sender, value);
-        }
-    }
-
-    /// @param token The token to pay
     /// @param valueToDeposit The amount to pay
     function mintPrivate(address token, uint256 valueToDeposit) internal virtual {
         address _nativeWrapper = nativeWrapper;

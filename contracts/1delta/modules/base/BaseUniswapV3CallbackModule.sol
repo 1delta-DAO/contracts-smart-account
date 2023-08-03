@@ -23,8 +23,9 @@ import {CallbackData} from "../../dex-tools/uniswap/DataTypes.sol";
 import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
 import {IERC20} from "../../interfaces/IERC20.sol";
 import {WithStorage} from "../../libraries/LibStorage.sol";
-import "./BaseLendingHandler.sol";
 import {UniswapDataHolder} from "../utils/UniswapDataHolder.sol";
+import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
+import {LendingInteractions} from "../../libraries/LendingInteractions.sol";
 
 // solhint-disable max-line-length
 
@@ -32,7 +33,7 @@ import {UniswapDataHolder} from "../utils/UniswapDataHolder.sol";
  * @title Uniswap Callback Base contract
  * @notice Contains main logic for uniswap callbacks
  */
-abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, UniswapDataHolder, BaseLendingHandler {
+abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, UniswapDataHolder, TokenTransfer, LendingInteractions  {
     using Path for bytes;
     using SafeCast for uint256;
 
@@ -53,8 +54,8 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
     constructor(
         address _factory,
         address _nativeWrapper,
-        address _router
-    ) BaseLendingHandler(_nativeWrapper) UniswapDataHolder(_factory, _router) {}
+        address _cNative
+    ) UniswapDataHolder(_factory, _cNative) LendingInteractions(_cNative, _nativeWrapper){}
 
     function uniswapV3SwapCallback(
         int256 amount0Delta,
@@ -91,18 +92,20 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                 }
                 // cache amount
                 cs().amount = amountToSwap;
-
-                mintPrivate(tokenOut, amountToSwap);
+                address cIn;
+                (cIn, tokenOut) = cTokenPair(tokenIn, tokenOut);
+                _mint(tokenOut, amountToSwap);
 
                 // withraw and send funds to the pool
-                redeemPrivate(tokenIn, amountToWithdraw, msg.sender);
+                _redeemUnderlying(cIn, amountToWithdraw);
+                _transferERC20Tokens(tokenIn, msg.sender, amountToWithdraw);
             } else {
                 // multi swap exact out
                 (uint256 amountInLastPool, uint256 amountToSupply) = amount0Delta > 0
                     ? (uint256(amount0Delta), uint256(-amount1Delta))
                     : (uint256(amount1Delta), uint256(-amount0Delta));
                 // we supply the amount received directly - together with user provided amount
-                mintPrivate(tokenIn, amountToSupply);
+                _mint(cTokenAddress(tokenIn), amountToSupply);
                 // we then swap exact out where the first amount is
                 // borrowed and paid from the money market
                 // the received amount is paid back to the original pool
@@ -123,7 +126,9 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                 } else {
                     // cache amount
                     cs().amount = amountInLastPool;
-                    redeemPrivate(tokenOut, amountInLastPool, msg.sender);
+                    tokenIn = cTokenAddress(tokenOut);  
+                    _redeemUnderlying(tokenIn, amountInLastPool);
+                    _transferERC20Tokens(tokenOut, msg.sender, amountInLastPool);
                 }
             }
             return;
@@ -147,9 +152,10 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                     abi.encode(data)
                 );
             } else {
-                tokenIn = tokenOut; // swap in/out because exact output swaps are reversed
+                tokenIn = cTokenAddress(tokenOut); // swap in/out because exact output swaps are reversed
                 // withraw and send funds to the pool
-                redeemPrivate(tokenOut, amountToPay, msg.sender);
+                _redeemUnderlying(tokenIn, amountToPay);
+                _transferERC20Tokens(tokenOut, msg.sender, amountToPay);
                 // cache amount
                 cs().amount = amountToPay;
             }
@@ -173,11 +179,12 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
 
                 // cache amount
                 cs().amount = amountToSwap;
-
-                mintPrivate(tokenOut, amountToSwap);
-
+                address cIn;
+                (cIn, tokenOut) = cTokenPair(tokenIn, tokenOut);
+                _mint(tokenOut, amountToSwap);
                 // borrow and repay amount from the lending pool
-                borrowPrivate(tokenIn, amountToBorrow, msg.sender);
+                _borrow(cIn, amountToBorrow);
+                _transferERC20Tokens(tokenIn, msg.sender, amountToBorrow);
 
                 return;
             } else {
@@ -187,7 +194,7 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                     : (uint256(amount1Delta), uint256(-amount0Delta));
 
                 // we supply the amount received directly - together with user provided amount
-                mintPrivate(tokenIn, amountToSupply);
+                _mint(cTokenAddress(tokenIn), amountToSupply);
 
                 if (hasMore) {
                     // we then swap exact out where the first amount is
@@ -208,7 +215,9 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                 } else {
                     // cache amount
                     cs().amount = amountInLastPool;
-                    borrowPrivate(tokenOut, amountInLastPool, msg.sender);
+                    tokenIn = cTokenAddress(tokenOut);
+                    _borrow(tokenIn, amountInLastPool);
+                    _transferERC20Tokens(tokenOut, msg.sender, amountInLastPool);
                 }
 
                 return;
@@ -229,8 +238,11 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                 }
                 // cache amount
                 cs().amount = amountToSwap;
-                repayPrivate(tokenOut, amountToSwap);
-                borrowPrivate(tokenIn, amountToBorrow, msg.sender);
+                address cIn;
+                (cIn, tokenOut) = cTokenPair(tokenIn, tokenOut);
+                _repayBorrow(tokenOut, amountToSwap);
+                _borrow(cIn, amountToBorrow);
+                _transferERC20Tokens(tokenIn, msg.sender, amountToBorrow);
 
                 return;
             } else {
@@ -240,7 +252,7 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                     : (uint256(amount1Delta), uint256(-amount0Delta));
 
                 // we repay the amount received directly
-                repayPrivate(tokenIn, amountToSupply);
+                _repayBorrow(cTokenAddress(tokenIn), amountToSupply);
                 if (hasMore) {
                     // we then swap exact out where the first amount is
                     // borrowed and paid from the money market
@@ -261,7 +273,9 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                 } else {
                     // cache amount
                     cs().amount = amountInLastPool;
-                    borrowPrivate(tokenOut, amountInLastPool, msg.sender);
+                    tokenIn = cTokenAddress(tokenOut);
+                    _borrow(tokenIn, amountInLastPool);
+                    _transferERC20Tokens(tokenOut, msg.sender, amountInLastPool);
                 }
                 return;
             }
@@ -286,8 +300,10 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                 );
             } else {
                 tokenIn = tokenOut; // swap in/out because exact output swaps are reversed
+                tokenOut = cTokenAddress(tokenOut);
                 // borrow and repay pool
-                borrowPrivate(tokenIn, amountToPay, msg.sender);
+                _borrow(tokenOut, amountToPay);
+                _transferERC20Tokens(tokenIn, msg.sender, amountToPay);
                 // cache amount
                 cs().amount = amountToPay;
             }
@@ -310,11 +326,14 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                 }
                 // cache amount
                 cs().amount = amountToSwap;
-                // lending protocol underlyings are approved by default
-                repayPrivate(tokenOut, amountToSwap);
 
+                address cIn;
+                (cIn, tokenOut) = cTokenPair(tokenIn, tokenOut);
+                // lending protocol underlyings are approved by default
+                _repayBorrow(tokenOut, amountToSwap);
                 // withraw from cToken
-                redeemPrivate(tokenIn, amountToWithdraw, msg.sender);
+                _redeemUnderlying(cIn, amountToWithdraw);
+                _transferERC20Tokens(tokenIn, msg.sender, amountToWithdraw);
 
                 return;
             } else {
@@ -324,7 +343,7 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                     : (uint256(amount1Delta), uint256(-amount0Delta));
 
                 // repay
-                repayPrivate(tokenIn, amountToRepay);
+                _repayBorrow(cTokenAddress(tokenIn), amountToRepay);
 
                 if (hasMore) {
                     // we then swap exact out where the first amount is
@@ -344,7 +363,9 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
                 } else {
                     // cache amount
                     cs().amount = amountToRepay;
-                    redeemPrivate(tokenOut, amountInLastPool, msg.sender);
+                    tokenIn = cTokenAddress(tokenOut);
+                    _redeemUnderlying(tokenIn, amountInLastPool);
+                    _transferERC20Tokens(tokenOut, msg.sender, amountInLastPool);
                 }
                 return;
             }
@@ -409,4 +430,29 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
             }
         }
     }
+        /// @param token The token to pay
+    /// @param payer The entity that must pay
+    /// @param value The amount to pay
+    function pay(
+        address token,
+        address payer,
+        uint256 value
+    ) internal {
+        address _nativeWrapper = wNative;
+        if (token == _nativeWrapper && address(this).balance >= value) {
+            // pay with nativeWrapper
+            _depositWeth(_nativeWrapper, value); // wrap only what is needed to pay
+            _transferERC20Tokens(_nativeWrapper, msg.sender, value);
+        } else if (payer == address(this)) {
+            // pay with tokens already in the contract (for the exact input multihop case)
+            _transferERC20Tokens(token, msg.sender, value);
+        } else {
+            // pull payment
+            _transferERC20TokensFrom(token, payer, msg.sender, value);
+        }
+    }
+
+    function cTokenAddress(address underlying) internal view virtual returns (address);
+
+    function cTokenPair(address underlying, address underlyingOther) internal view virtual returns (address, address);
 }

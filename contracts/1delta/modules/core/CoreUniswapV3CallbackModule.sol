@@ -22,15 +22,7 @@ abstract contract CoreUniswapV3CallbackModule is BaseUniswapV3CallbackModule, Le
         address _router
     ) BaseUniswapV3CallbackModule(_factory, _weth, _router) LendingHandler(_weth) {}
 
-    function pay(
-        address token,
-        address payer,
-        uint256 value
-    ) internal override(LendingHandler, BaseLendingHandler) {
-        super.pay(token, payer, value);
-    }
-
-    function mintPrivate(address token, uint256 valueToDeposit) internal override(LendingHandler, BaseLendingHandler) {
+    function mintPrivate(address token, uint256 valueToDeposit) internal override(LendingHandler) {
         super.mintPrivate(token, valueToDeposit);
     }
 
@@ -38,15 +30,15 @@ abstract contract CoreUniswapV3CallbackModule is BaseUniswapV3CallbackModule, Le
         address token,
         uint256 valueToWithdraw,
         address recipient
-    ) internal override(LendingHandler, BaseLendingHandler) {
+    ) internal override(LendingHandler) {
         super.redeemPrivate(token, valueToWithdraw, recipient);
     }
 
-    function redeemAllCToken(address token, address recipient) internal override(LendingHandler, BaseLendingHandler) returns (uint256) {
+    function redeemAllCToken(address token, address recipient) internal override(LendingHandler) returns (uint256) {
         return super.redeemAllCToken(token, recipient);
     }
 
-    function redeemAllCTokenAndKeep(address token) internal override(LendingHandler, BaseLendingHandler) returns (uint256) {
+    function redeemAllCTokenAndKeep(address token) internal override(LendingHandler) returns (uint256) {
         return super.redeemAllCTokenAndKeep(token);
     }
 
@@ -54,7 +46,7 @@ abstract contract CoreUniswapV3CallbackModule is BaseUniswapV3CallbackModule, Le
         address token,
         uint256 cTokenAmountToRedeem,
         address recipient
-    ) internal override(LendingHandler, BaseLendingHandler) returns (uint256) {
+    ) internal override(LendingHandler) returns (uint256) {
         return super.redeemCTokenPrivate(token, cTokenAmountToRedeem, recipient);
     }
 
@@ -62,15 +54,11 @@ abstract contract CoreUniswapV3CallbackModule is BaseUniswapV3CallbackModule, Le
         address token,
         uint256 valueToBorrow,
         address recipient
-    ) internal override(LendingHandler, BaseLendingHandler) {
+    ) internal override(LendingHandler) {
         super.borrowPrivate(token, valueToBorrow, recipient);
     }
 
-    function repayPrivate(address token, uint256 valueToRepay) internal override(LendingHandler, BaseLendingHandler) {
+    function repayPrivate(address token, uint256 valueToRepay) internal override(LendingHandler) {
         return super.repayPrivate(token, valueToRepay);
     }
-
-    function cToken(address _underlying) internal view virtual override(BaseLendingHandler, LendingHandler) returns (ICompoundTypeCERC20);
-
-    function cEther() internal view virtual override(BaseLendingHandler, LendingHandler) returns (ICompoundTypeCEther);
 }

@@ -52,4 +52,8 @@ interface IDataProvider {
     function allCTokens() external view returns (address[] memory cTokens);
 
     function allUnderlyings() external view returns (address[] memory underlyings);
+
+    function cTokenPair(address _underlying, address _underlyingOther) external view returns (address _cToken, address _cTokenOther);
+
+    function cTokenAddress(address _underlying) external view returns (address _cToken);
 }

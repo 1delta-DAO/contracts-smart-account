@@ -44,16 +44,6 @@ describe('Diamond Money Market operations', async () => {
 
         uniswap = await uniswapFixture(deployer, 5)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9)
-
-        accountAlice = await createMarginTradingAccount(alice, accountFixture)
-
-        accountBob = await createMarginTradingAccount(bob, accountFixture)
-
-        accountAchi = await createMarginTradingAccount(achi, accountFixture)
-
-        accountGabi = await createMarginTradingAccount(gabi, accountFixture)
-
         opts = {
             underlyings: uniswap.tokens,
             collateralFactors: uniswap.tokens.map(x => ONE_18.mul(7).div(10)),
@@ -93,6 +83,18 @@ describe('Diamond Money Market operations', async () => {
         }
 
         compound = await generateCompoundFixture(deployer, opts)
+
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
+
+        accountAlice = await createMarginTradingAccount(alice, accountFixture)
+
+        accountBob = await createMarginTradingAccount(bob, accountFixture)
+
+        accountAchi = await createMarginTradingAccount(achi, accountFixture)
+
+        accountGabi = await createMarginTradingAccount(gabi, accountFixture)
+
+
         tokenAddresses = uniswap.tokens.map(tk => tk.address)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)

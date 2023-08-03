@@ -58,17 +58,7 @@ describe('Money Market Multi Swap operations', async () => {
 
         uniswap = await uniswapFixture(deployer, 5)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9)
 
-        accountAlice = await createMoneyMarketAccount(alice, accountFixture)
-
-        accountBob = await createMoneyMarketAccount(bob, accountFixture)
-
-        accountAchi = await createMoneyMarketAccount(achi, accountFixture)
-
-        accountGabi = await createMoneyMarketAccount(gabi, accountFixture)
-
-        accountCarol = await createMoneyMarketAccount(carol, accountFixture)
 
 
         opts = {
@@ -112,8 +102,19 @@ describe('Money Market Multi Swap operations', async () => {
 
         compound = await generateCompoundFixture(deployer, opts)
 
-        await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
 
+        accountAlice = await createMoneyMarketAccount(alice, accountFixture)
+
+        accountBob = await createMoneyMarketAccount(bob, accountFixture)
+
+        accountAchi = await createMoneyMarketAccount(achi, accountFixture)
+
+        accountGabi = await createMoneyMarketAccount(gabi, accountFixture)
+
+        accountCarol = await createMoneyMarketAccount(carol, accountFixture)
+
+        await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
 
         await uniswap.weth9.connect(deployer).approve(uniswap.nft.address, constants.MaxUint256)
         await uniswap.weth9.connect(deployer).deposit({ value: expandTo18Decimals(1_000) })

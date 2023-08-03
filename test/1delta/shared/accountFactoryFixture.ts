@@ -60,7 +60,7 @@ export interface AccountFactoryFixture {
     delegatorModule: DelegatorModule
 }
 
-export async function accountFactoryFixture(signer: SignerWithAddress, factory: UniswapV3Factory, weth: IWETH9): Promise<AccountFactoryFixture> {
+export async function accountFactoryFixture(signer: SignerWithAddress, factory: UniswapV3Factory, weth: IWETH9, cNative: string): Promise<AccountFactoryFixture> {
     let diamondDeployer: OneDeltaAccountFactory
     let moduleManager: OneDeltaModuleManager
     let moneyMarketModule: MoneyMarketModule
@@ -122,7 +122,7 @@ export async function accountFactoryFixture(signer: SignerWithAddress, factory: 
 
     if (factory && weth) {
 
-        callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factory.address, weth.address, minimalRouter.address)
+        callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factory.address, weth.address, minimalRouter.address, cNative)
 
         // add uniswap callback
         await moduleManager.connect(signer).configureModules(
@@ -224,7 +224,7 @@ export interface UniswapAccountFactoryFixture {
     delegatorModule: DelegatorModule
 }
 
-export async function uniswapAccountFactoryFixture(signer: SignerWithAddress, weth: IWETH9, factory: UniswapV3Factory): Promise<UniswapAccountFactoryFixture> {
+export async function uniswapAccountFactoryFixture(signer: SignerWithAddress, weth: IWETH9, factory: UniswapV3Factory, cNative: string): Promise<UniswapAccountFactoryFixture> {
     let diamondDeployer: OneDeltaAccountFactory
     let moduleManager: OneDeltaModuleManager
     let dataProvider: DataProvider
@@ -237,7 +237,7 @@ export async function uniswapAccountFactoryFixture(signer: SignerWithAddress, we
     delegatorModule = await new DelegatorModule__factory(signer).deploy()
 
     minimalRouter = await new MinimalSwapRouter__factory(signer).deploy(factory.address, weth.address)
-    callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factory.address, weth.address, minimalRouter.address)
+    callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factory.address, weth.address, minimalRouter.address, cNative)
 
     // add initializer
     await moduleManager.configureModules(

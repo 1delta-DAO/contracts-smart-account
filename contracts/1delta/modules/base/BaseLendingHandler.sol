@@ -21,15 +21,6 @@ abstract contract BaseLendingHandler {
     }
 
     /// @param token The token to pay
-    /// @param payer The entity that must pay
-    /// @param value The amount to pay
-    function pay(
-        address token,
-        address payer,
-        uint256 value
-    ) internal virtual;
-
-    /// @param token The token to pay
     /// @param valueToDeposit The amount to deposit
     function mintPrivate(address token, uint256 valueToDeposit) internal virtual;
 
@@ -70,6 +61,10 @@ abstract contract BaseLendingHandler {
     function repayPrivate(address token, uint256 valueToRepay) internal virtual;
 
     function cToken(address underlying) internal view virtual returns (ICompoundTypeCERC20);
+
+    function cTokenAddress(address underlying) internal view virtual returns (address);
+
+    function cTokenPair(address underlying, address underlyingOther) internal view virtual returns (address, address);
 
     function cEther() internal view virtual returns (ICompoundTypeCEther);
 

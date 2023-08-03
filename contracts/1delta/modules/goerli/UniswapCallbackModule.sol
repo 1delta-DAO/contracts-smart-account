@@ -8,6 +8,8 @@ pragma solidity 0.8.21;
 
 import "../core/CoreUniswapV3CallbackModule.sol";
 import {GoerliCompoundCTokenData, IComptroller} from "./GoerliCompoundCTokenData.sol";
+import {ICompoundTypeCERC20} from "../../interfaces/compound/ICompoundTypeCERC20.sol";
+import {ICompoundTypeCEther} from "../../interfaces/compound/ICompoundTypeCEther.sol";
 
 // solhint-disable max-line-length
 
@@ -27,7 +29,11 @@ contract UniswapCallbackModuleGoerli is GoerliCompoundCTokenData, CoreUniswapV3C
         return _cEther();
     }
 
-    function getComptroller() internal view override returns (IComptroller) {
+    function getComptroller() internal view returns (IComptroller) {
         return _getComptroller();
     }
+
+    function cTokenPair(address underlying, address underlyingOther) internal view override returns (address, address) {}
+
+    function cTokenAddress(address underlying) internal view override returns (address) {}
 }

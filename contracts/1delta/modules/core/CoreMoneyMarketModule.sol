@@ -20,14 +20,6 @@ abstract contract CoreMoneyMarketModule is BaseMoneyMarketModule, LendingHandler
         address _router
     ) BaseMoneyMarketModule(_factory, _nativeWrapper, _router) LendingHandler(_nativeWrapper) {}
 
-    function pay(
-        address token,
-        address payer,
-        uint256 value
-    ) internal override(LendingHandler, BaseLendingHandler) {
-        super.pay(token, payer, value);
-    }
-
     function mintPrivate(address token, uint256 valueToDeposit) internal override(LendingHandler, BaseLendingHandler) {
         super.mintPrivate(token, valueToDeposit);
     }

@@ -21,14 +21,6 @@ contract MoneyMarketModule is CompoundHandler, BaseMoneyMarketModule {
         address _router
     ) BaseMoneyMarketModule(_factory, _weth, _router) CompoundHandler(_weth) {}
 
-    function pay(
-        address token,
-        address payer,
-        uint256 value
-    ) internal override(CompoundHandler, BaseLendingHandler) {
-        super.pay(token, payer, value);
-    }
-
     function mintPrivate(address token, uint256 valueToDeposit) internal override(CompoundHandler, BaseLendingHandler) {
         super.mintPrivate(token, valueToDeposit);
     }
@@ -88,4 +80,14 @@ contract MoneyMarketModule is CompoundHandler, BaseMoneyMarketModule {
     function borrowBalanceCurrent(address underlying) internal virtual override returns (uint256) {
         return cToken(underlying).borrowBalanceCurrent(address(this));
     }
+
+    function cTokenPair(address underlying, address underlyingOther) internal view override returns (address, address) {
+        return IDataProvider(ps().dataProvider).cTokenPair(underlying, underlyingOther);
+    }
+    
+    function cTokenAddress(address underlying) internal view override returns (address) {
+        return IDataProvider(ps().dataProvider).cTokenAddress(underlying);
+    }
+
+
 }

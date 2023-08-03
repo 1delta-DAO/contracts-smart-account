@@ -43,8 +43,6 @@ describe('Account based single collateral and debt swap operations', async () =>
 
         uniswap = await uniswapFixture(deployer, 5)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9)
-
         opts = {
             underlyings: uniswap.tokens,
             collateralFactors: uniswap.tokens.map(x => ONE_18.mul(5).div(10)),
@@ -83,6 +81,8 @@ describe('Account based single collateral and debt swap operations', async () =>
         }
 
         compound = await generateCompoundFixture(deployer, opts)
+
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
         await accountFixture.dataProvider.setNativeWrapper(uniswap.weth9.address)
@@ -317,7 +317,7 @@ describe('Account based single collateral and debt swap operations', async () =>
         }
 
 
-        await absAccountAlice.connect(alice).swapCollateralAllInMulti(params)
+        await absAccountAlice.connect(alice).swapCollateralAllIn(params)
 
         const bal = await compound.cTokens[supplyTokenIndex_1].callStatic.balanceOfUnderlying(accountAlice.address)
         const supply0 = await compound.cTokens[supplyTokenIndex_0].balanceOf(accountAlice.address)
@@ -356,7 +356,7 @@ describe('Account based single collateral and debt swap operations', async () =>
             path,
             amountInMaximum: borrowAmount_1.mul(101).div(100),
         }
-        await absAccountAlice.connect(alice).swapBorrowAllOutMulti(params)
+        await absAccountAlice.connect(alice).swapBorrowAllOut(params)
 
         const borrow0 = await compound.cTokens[borrowTokenIndex_0].callStatic.borrowBalanceCurrent(accountAlice.address)
         const borrow1 = await compound.cTokens[borrowTokenIndex_1].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -445,16 +445,18 @@ describe('Account based single collateral and debt swap operations', async () =>
 // ························································|······································|·············|·············|·················|···············|··············
 // |  Contract                                             ·  Method                              ·  Min        ·  Max        ·  Avg            ·  # calls      ·  usd (avg)  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapBorrowExactIn                   ·          -  ·          -  ·         543866  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapBorrowExactIn                   ·          -  ·          -  ·         536868  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapBorrowExactOut                  ·          -  ·          -  ·         512076  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapBorrowExactOut                  ·          -  ·          -  ·         506478  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapCollateralExactIn               ·          -  ·          -  ·         573616  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapCollateralExactIn               ·          -  ·          -  ·         566619  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapCollateralExactOut              ·          -  ·          -  ·         548468  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapCollateralExactOut              ·          -  ·          -  ·         542870  ·            1  ·          -  │
+// ·······················································|······································|·············|·············|·················|···············|··············
+// |  SweeperModule                                        ·  swapBorrowAllOut                    ·          -  ·          -  ·         507728  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  swapBorrowAllOutMulti               ·          -  ·          -  ·         511307  ·            1  ·          -  │
+// |  SweeperModule                                        ·  swapCollateralAllIn                 ·          -  ·          -  ·         545961  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  swapCollateralAllInMulti            ·          -  ·          -  ·         550918  ·            1  ·          -  │
+
 
 

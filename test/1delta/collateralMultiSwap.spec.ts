@@ -45,16 +45,6 @@ describe('Collateral Multi Swap operations', async () => {
 
         uniswap = await uniswapFixture(deployer, 5)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9)
-
-        accountAlice = await createMarginTradingAccount(alice, accountFixture)
-
-        accountBob = await createMarginTradingAccount(bob, accountFixture)
-
-        accountAchi = await createMarginTradingAccount(achi, accountFixture)
-
-        accountGabi = await createMarginTradingAccount(gabi, accountFixture)
-
 
         opts = {
             underlyings: uniswap.tokens,
@@ -96,6 +86,16 @@ describe('Collateral Multi Swap operations', async () => {
         }
 
         compound = await generateCompoundFixture(deployer, opts)
+
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
+
+        accountAlice = await createMarginTradingAccount(alice, accountFixture)
+
+        accountBob = await createMarginTradingAccount(bob, accountFixture)
+
+        accountAchi = await createMarginTradingAccount(achi, accountFixture)
+
+        accountGabi = await createMarginTradingAccount(gabi, accountFixture)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
 
@@ -353,7 +353,7 @@ describe('Collateral Multi Swap operations', async () => {
             amountOutMinimum: supply1Before.mul(99).div(100)
         }
         const accountAlt = await getAbsoluteMarginTraderAccount(achi, accountAchi.address)
-        await accountAlt.connect(achi).swapCollateralAllInMulti(params)
+        await accountAlt.connect(achi).swapCollateralAllIn(params)
 
         const supply0 = await compound.cTokens[supplyTokenIndexFrom].callStatic.balanceOfUnderlying(accountAchi.address)
         const supply1 = await compound.cTokens[supplyTokenIndexTo].callStatic.balanceOfUnderlying(accountAchi.address)
@@ -398,7 +398,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         const accountAlt = await getAbsoluteMarginTraderAccount(bob, accountBob.address)
 
-        await accountAlt.connect(bob).swapBorrowAllOutMulti(params)
+        await accountAlt.connect(bob).swapBorrowAllOut(params)
 
         const borrow0 = await compound.cTokens[borrowTokenIndex_0].callStatic.borrowBalanceCurrent(accountBob.address)
         const borrow1 = await compound.cTokens[borrowTokenIndex_1].callStatic.borrowBalanceCurrent(accountBob.address)
@@ -437,7 +437,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         let accountAlt = await getAbsoluteMarginTraderAccount(bob, accountBob.address)
         await expect(
-            accountAlt.connect(alice).swapBorrowAllOutMulti(paramswapBorrowExactOut)
+            accountAlt.connect(alice).swapBorrowAllOut(paramswapBorrowExactOut)
         ).to.be.revertedWith(errorMessage)
 
 
@@ -453,7 +453,7 @@ describe('Collateral Multi Swap operations', async () => {
         accountAlt = await getAbsoluteMarginTraderAccount(achi, accountAchi.address)
 
         await expect(
-            accountAlt.connect(gabi).swapCollateralAllInMulti(paramswapCollateralExactIn)
+            accountAlt.connect(gabi).swapCollateralAllIn(paramswapCollateralExactIn)
         ).to.be.revertedWith(errorMessage)
 
 
@@ -474,18 +474,19 @@ describe('Collateral Multi Swap operations', async () => {
 // ·······························································································|···························|·················|······························
 // |  Methods                                                                                                                                                                 │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapBorrowExactIn                   ·          -  ·          -  ·         543866  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapBorrowExactIn                   ·          -  ·          -  ·         698183  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapBorrowExactOut                  ·          -  ·          -  ·         512076  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapBorrowExactOut                  ·          -  ·          -  ·         610220  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapCollateralExactIn               ·          -  ·          -  ·         573616  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapCollateralExactIn               ·          -  ·          -  ·         655838  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapCollateralExactOut              ·          -  ·          -  ·         548468  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapCollateralExactOut              ·          -  ·          -  ·         638968  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  swapBorrowAllOutMulti               ·          -  ·          -  ·         645821  ·            1  ·          -  │
+// |  SweeperModule                                        ·  swapBorrowAllOut                    ·          -  ·          -  ·         642289  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  swapCollateralAllInMulti            ·          -  ·          -  ·         698147  ·            1  ·          -  │
+// |  SweeperModule                                        ·  swapCollateralAllIn                 ·          -  ·          -  ·         691697  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
+
 
 
 

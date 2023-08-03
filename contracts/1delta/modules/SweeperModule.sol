@@ -23,14 +23,6 @@ contract SweeperModule is CompoundHandler, BaseSweeperModule {
         address _router
     ) BaseSweeperModule(_factory, _weth, _router) CompoundHandler(_weth) {}
 
-    function pay(
-        address token,
-        address payer,
-        uint256 value
-    ) internal override(CompoundHandler, BaseLendingHandler) {
-        super.pay(token, payer, value);
-    }
-
     function mintPrivate(address token, uint256 valueToDeposit) internal override(CompoundHandler, BaseLendingHandler) {
         super.mintPrivate(token, valueToDeposit);
     }
@@ -90,4 +82,10 @@ contract SweeperModule is CompoundHandler, BaseSweeperModule {
     function borrowBalanceCurrent(address underlying) internal virtual override returns (uint256) {
         return cToken(underlying).borrowBalanceCurrent(address(this));
     }
+
+    function cTokenPair(address underlying, address underlyingOther) internal view override returns (address, address) {
+        return IDataProvider(ps().dataProvider).cTokenPair(underlying, underlyingOther);
+    }
+
+    function cTokenAddress(address underlying) internal view override returns (address) {}
 }

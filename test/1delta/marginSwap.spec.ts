@@ -51,8 +51,6 @@ describe('Account based single margin swaps', async () => {
 
         uniswap = await uniswapFixture(deployer, 5)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9)
-
         opts = {
             underlyings: uniswap.tokens,
             collateralFactors: uniswap.tokens.map(x => ONE_18.mul(5).div(10)),
@@ -91,6 +89,8 @@ describe('Account based single margin swaps', async () => {
         }
 
         compound = await generateCompoundFixture(deployer, opts)
+
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
         await accountFixture.dataProvider.setNativeWrapper(uniswap.weth9.address)
@@ -525,13 +525,17 @@ describe('Account based single margin swaps', async () => {
 // ·······························································································|···························|·················|······························
 // |  Methods                                                                                                                                                                 │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactIn           ·     574039  ·     615184  ·         587759  ·            3  ·          -  │
+// |  MarginTraderModule                                   ·  openMarginPositionExactIn           ·     567037  ·     608182  ·         580757  ·            3  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactOut          ·     572997  ·     572999  ·         572998  ·            2  ·          -  │
+// |  MarginTraderModule                                   ·  openMarginPositionExactOut          ·     567383  ·     567385  ·         567384  ·            2  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  trimMarginPositionExactIn           ·          -  ·          -  ·         505831  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  trimMarginPositionExactIn           ·          -  ·          -  ·         498829  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  trimMarginPositionExactOut          ·          -  ·          -  ·         489728  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  trimMarginPositionExactOut          ·          -  ·          -  ·         484102  ·            1  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+// |  SweeperModule                                        ·  trimMarginPositionAllIn             ·          -  ·          -  ·         505310  ·            1  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+// |  SweeperModule                                        ·  trimMarginPositionAllOut            ·          -  ·          -  ·         485414  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
 
 

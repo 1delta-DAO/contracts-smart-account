@@ -30,4 +30,8 @@ contract MoneyMarketModuleGoerli is CoreMoneyMarketModule, GoerliCompoundCTokenD
     function getComptroller() internal view override returns (IComptroller) {
         return _getComptroller();
     }
+
+    function cTokenPair(address underlying, address underlyingOther) internal view override returns (address, address) {}
+
+    function cTokenAddress(address underlying) internal view override returns (address) {}
 }

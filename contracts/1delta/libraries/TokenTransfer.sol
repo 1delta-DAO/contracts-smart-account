@@ -105,23 +105,21 @@ abstract contract TokenTransfer {
     function _depositWeth(address weth, uint256 amount) internal {
         assembly {
             let ptr := mload(0x40) // free memory pointer
-
             // selector for deposit()
             mstore(ptr, 0xd0e30db000000000000000000000000000000000000000000000000000000000)
             pop(
                 call(
                     gas(),
-                    weth,
-                    amount,
-                    ptr, // input = empty for fallback
-                    0x0, // input size = zero
+                    and(weth, ADDRESS_MASK),
+                    amount, // ETH to deposit
+                    ptr, // seletor for deposit()
+                    0x4, // input size = zero
                     0x0, // output = empty
                     0x0 // output size = zero
                 )
             )
         }
     }
-
 
     function _approve(
         address token,

@@ -38,8 +38,6 @@ describe('Account based single money market interactions', async () => {
 
         uniswap = await uniswapFixture(deployer, 5)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9)
-
         opts = {
             underlyings: uniswap.tokens,
             collateralFactors: uniswap.tokens.map(x => ONE_18.mul(5).div(10)),
@@ -78,6 +76,8 @@ describe('Account based single money market interactions', async () => {
         }
 
         compound = await generateCompoundFixture(deployer, opts)
+
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
         await accountFixture.dataProvider.setNativeWrapper(uniswap.weth9.address)

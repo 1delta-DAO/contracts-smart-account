@@ -1,5 +1,5 @@
 import { ethers, waffle } from 'hardhat'
-import { IWETH9, MinimalSwapRouter, MockTimeSwapRouter, UniswapV3Factory, UniswapV3Factory__factory } from '../../../types'
+import { IWETH9, MinimalSwapRouter, MockTimeSwapRouter, UniswapV3Factory, UniswapV3Factory__factory, WETH9, WETH9__factory } from '../../../types'
 
 import WETH9Artifact from '../contracts/WETH9.json'
 
@@ -13,10 +13,7 @@ export interface RouterFixture {
 }
 
 export async function uniswapV3RouterFixture(signer: SignerWithAddress): Promise<RouterFixture> {
-    const weth9 = (await waffle.deployContract(signer, {
-        bytecode: WETH9Artifact.bytecode,
-        abi: WETH9Artifact.abi,
-    })) as IWETH9
+    const weth9 = await new WETH9__factory(signer).deploy()
 
     const factory = await new UniswapV3Factory__factory(signer).deploy()
 
