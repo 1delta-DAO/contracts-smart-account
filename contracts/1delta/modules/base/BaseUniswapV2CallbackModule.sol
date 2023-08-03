@@ -2,21 +2,18 @@
 
 pragma solidity 0.8.21;
 
-import {
-    MarginCallbackData,
-    ExactInputMultiParams,
-    ExactOutputMultiParams,
-    MarginSwapParamsMultiExactIn
-    } from "../../dataTypes/InputTypes.sol";
+// solhint-disable max-line-length
+
+import {MarginCallbackData, ExactInputMultiParams, ExactOutputMultiParams, MarginSwapParamsMultiExactIn} from "../../dataTypes/InputTypes.sol";
 import "../../../external-protocols/uniswapV2/core/interfaces/IUniswapV2Pair.sol";
 import {TokenTransfer} from "./../../libraries/TokenTransfer.sol";
 import {IERC20} from "../../../interfaces/IERC20.sol";
-import {Path} from "../../libraries/Path.sol";
+import {BytesLib} from "../../libraries/BytesLib.sol";
 import {WithStorage} from "../../libraries/LibStorage.sol";
 import {LendingInteractions} from "../../libraries/LendingInteractions.sol";
 
 abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, LendingInteractions {
-    using Path for bytes;
+    using BytesLib for bytes;
     error Slippage();
 
     address immutable v2Factory;
@@ -35,6 +32,22 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
     ) LendingInteractions(_cNative, _nativeWrapper) {
         v2Factory = _uniFactory;
         FF_UNISWAP_FACTORY = bytes32((uint256(0xff) << 248) | (uint256(uint160(_uniFactory)) << 88));
+    }
+
+    function getFirstPool(bytes memory path) internal pure returns (bytes memory) {
+        return path.slice(0, 45);
+    }
+
+    function skipToken(bytes memory path) internal pure returns (bytes memory) {
+        return path.slice(25, path.length - 25);
+    }
+
+    function getLastToken(bytes memory data) internal pure returns (address token) {
+        // fetches the last token
+        uint256 len = data.length;
+        assembly {
+            token := div(mload(add(add(data, 0x20), sub(len, 21))), 0x1000000000000000000000000)
+        }
     }
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
@@ -61,10 +74,7 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
         );
     }
 
-    function pairAddress(
-        address tokenA,
-        address tokenB
-    ) private view returns (address pair) {
+    function pairAddress(address tokenA, address tokenB) private view returns (address pair) {
         bytes32 ff_uni = FF_UNISWAP_FACTORY;
         assembly {
             // There is one contract for every combination of tokens,
@@ -185,21 +195,22 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
         address,
         uint256 amount0,
         uint256 amount1,
-        bytes calldata data
+        bytes memory data
     ) external {
+        uint8 tradeType;
         address tokenIn;
         address tokenOut;
-        MarginCallbackData memory _data = abi.decode(data, (MarginCallbackData));
-        uint256 tradeType = _data.tradeType;
-
         {
-            bytes memory _path = _data.path;
+            uint24 fee;
+            uint8 pId;
             assembly {
-                tokenIn := div(mload(add(_path, 0x20)), 0x1000000000000000000000000)
-                tokenOut := div(mload(add(add(_path, 0x20), 23)), 0x1000000000000000000000000)
+                tokenIn := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
+                fee := mload(add(add(data, 0x3), 20))
+                pId := mload(add(add(data, 0x1), 23))
+                tradeType := mload(add(add(data, 0x1), 24))
+                tokenOut := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
             }
         }
-
         bool zeroForOne = tokenIn < tokenOut;
         address pool = pairAddress(tokenIn, tokenOut);
         {
@@ -207,7 +218,7 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
         }
 
         if (tradeType == 4) {
-            if (_data.exactIn) {
+            if (true) {
                 (address token0, address token1) = sortTokens(tokenIn, tokenOut);
                 // the swap amount is expected to be the nonzero output amount
                 // since v2 does not send the input amount as argument, we have to fetch
@@ -216,18 +227,17 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
                     ? (amount0, IERC20(token1).balanceOf(address(this)))
                     : (amount1, IERC20(token0).balanceOf(address(this)));
 
-                if (_data.path.length > 40) {
+                if (data.length > 40) {
                     // we need to swap to the token that we want to supply
                     // the router returns the amount that we can finally supply to the protocol
-                    _data.path = _data.path.skipToken();
-                    amountToSwap = exactInputToSelf(amountToSwap, _data.path);
+                    data = skipToken(data);
+                    amountToSwap = exactInputToSelf(amountToSwap, data);
 
                     // supply directly
-                    tokenOut = _data.path.getLastToken();
+                    tokenOut = getLastToken(data);
                     // cache amount
                     cs().amount = amountToSwap;
                 }
-
 
                 address cIn;
                 (cIn, tokenOut) = cTokenPair(tokenIn, tokenOut);
@@ -247,12 +257,14 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
                 // we then swap exact out where the first amount is
                 // borrowed and paid from the money market
                 // the received amount is paid back to the original pool
-                if (_data.path.hasMultiplePools()) {
-                    _data.path = _data.path.skipToken();
-                    (tokenOut, tokenIn, ) = _data.path.decodeFirstPool();
-                    _data.tradeType = 14;
+                if (data.length > 69) {
+                    data = skipToken(data);
+                    assembly {
+                        tokenOut := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
+                        tokenIn := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
+                    }
                     (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (amountInLastPool, uint256(0)) : (uint256(0), amountInLastPool);
-                    IUniswapV2Pair(pairAddress(tokenIn, tokenOut)).swap(amount0Out, amount1Out, msg.sender, abi.encode(_data));
+                    IUniswapV2Pair(pairAddress(tokenIn, tokenOut)).swap(amount0Out, amount1Out, msg.sender, data);
                 } else {
                     // cache amount
                     cs().amount = amountInLastPool;
@@ -263,20 +275,20 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
             }
         }
         if (tradeType == 8) {
-            if (_data.exactIn) {
+            if (true) {
                 // (address token0, address token1) = sortTokens(tokenIn, tokenOut);
                 // the swap amount is expected to be the nonzero output amount
                 // since v2 does not send the input amount as argument, we have to fetch
                 // the other amount manually through balanceOf
-                (uint256 amountToSwap, uint256 amountToBorrow) = zeroForOne ? (amount1, cs().amount) : (amount0, cs().amount) ;
-                if (_data.path.length > 43) {
+                (uint256 amountToSwap, uint256 amountToBorrow) = zeroForOne ? (amount1, cs().amount) : (amount0, cs().amount);
+                if (data.length > 69) {
                     // we need to swap to the token that we want to supply
                     // the router returns the amount that we can finally supply to the protocol
-                    _data.path = _data.path.skipToken();
-                    amountToSwap = exactInputToSelf(amountToSwap, _data.path);
+                    data = skipToken(data);
+                    amountToSwap = exactInputToSelf(amountToSwap, data);
 
                     // supply directly
-                    tokenOut = _data.path.getLastToken();
+                    tokenOut = getLastToken(data);
                 }
                 // cache amount
                 cs().amount = amountToSwap;
@@ -297,12 +309,14 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
                 // we then swap exact out where the first amount is
                 // borrowed and paid from the money market
                 // the received amount is paid back to the original pool
-                if (_data.path.hasMultiplePools()) {
-                    _data.path = _data.path.skipToken();
-                    (tokenOut, tokenIn, ) = _data.path.decodeFirstPool();
-                    _data.tradeType = 14;
+                if (data.length > 69) {
+                    data = skipToken(data);
+                    assembly {
+                        tokenOut := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
+                        tokenIn := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
+                    }
                     (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (amountInLastPool, uint256(0)) : (uint256(0), amountInLastPool);
-                    IUniswapV2Pair(pairAddress(tokenIn, tokenOut)).swap(amount0Out, amount1Out, msg.sender, abi.encode(_data));
+                    IUniswapV2Pair(pairAddress(tokenIn, tokenOut)).swap(amount0Out, amount1Out, msg.sender, data);
                 } else {
                     // cache amount
                     cs().amount = amountInLastPool;
@@ -317,11 +331,16 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
     // requires the initial amount to have already been sent to the first pair
     // `refundETH` should be called at very end of all swaps
     function exactInputToSelf(uint256 amountIn, bytes memory path) internal returns (uint256 amountOut) {
-        (address tokenIn, address tokenOut, ) = path.decodeFirstPool();
+        address tokenIn;
+        address tokenOut;
+        assembly {
+            tokenIn := div(mload(add(add(path, 0x20), 0)), 0x1000000000000000000000000)
+            tokenOut := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
+        }
         address pair = pairAddress(tokenIn, tokenOut);
         _transferERC20Tokens(tokenIn, address(pair), amountIn);
         while (true) {
-            bool hasMultiplePools = path.hasMultiplePools();
+            bool hasMultiplePools = path.length > 69;
             (address token0, ) = sortTokens(tokenIn, tokenOut);
             // scope to avoid stack too deep errors
             {
@@ -335,7 +354,7 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
             IUniswapV2Pair(pair).swap(amount0Out, amount1Out, to, new bytes(0));
             // decide whether to continue or terminate
             if (hasMultiplePools) {
-                path = path.skipToken();
+                path = skipToken(path);
                 // update pair
                 pair = to;
             } else {
@@ -347,22 +366,29 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
 
     // increase the margin position - borrow (tokenIn) and sell it against collateral (tokenOut)
     // the user provides the debt amount as input
-    function openMarginPositionExactInV2(MarginSwapParamsMultiExactIn memory params) external returns (uint256 amountOut) {
-        (address tokenIn, address tokenOut, ) = params.path.decodeFirstPool();
-
-        MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 8, exactIn: true});
+    function openMarginPositionExactInV2(
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        bytes memory path
+    ) external returns (uint256 amountOut) {
+        address tokenIn;
+        address tokenOut;
+        assembly {
+            tokenIn := div(mload(add(path, 0x20)), 0x1000000000000000000000000)
+            tokenOut := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
+        }
 
         bool zeroForOne = tokenIn < tokenOut;
-        cs().amount = params.amountIn;
+        cs().amount = amountIn;
         address pool = pairAddress(tokenIn, tokenOut);
         (uint256 amount0Out, uint256 amount1Out) = zeroForOne
-            ? (uint256(0), getAmountOutDirect(pool, zeroForOne, params.amountIn))
-            : (getAmountOutDirect(pool, zeroForOne, params.amountIn), uint256(0));
-        IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), abi.encode(data));
+            ? (uint256(0), getAmountOutDirect(pool, zeroForOne, amountIn))
+            : (getAmountOutDirect(pool, zeroForOne, amountIn), uint256(0));
+        IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), path);
 
         amountOut = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        if (params.amountOutMinimum > amountOut) revert Slippage();
+        if (amountOutMinimum > amountOut) revert Slippage();
     }
 
     function cTokenAddress(address underlying) internal view virtual returns (address);
