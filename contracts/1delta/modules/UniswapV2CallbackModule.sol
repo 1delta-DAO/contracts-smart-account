@@ -6,18 +6,19 @@ pragma solidity 0.8.21;
 * Author: Achthar
 /******************************************************************************/
 
-import {BaseUniswapV3CallbackModule} from "./base/BaseUniswapV3CallbackModule.sol";
+import {BaseUniswapV2CallbackModule} from "./base/BaseUniswapV2CallbackModule.sol";
 import {IDataProvider} from "../interfaces/IDataProvider.sol";
 
 // solhint-disable max-line-length
 
 /// @title Module for Uniswap callbacks
-contract UniswapCallbackModule is BaseUniswapV3CallbackModule {
+contract UniswapV2CallbackModule is BaseUniswapV2CallbackModule {
+
     constructor(
         address _factory,
         address _nativeWrapper,
         address _cNative
-    ) BaseUniswapV3CallbackModule(_factory, _nativeWrapper, _cNative) {}
+    ) BaseUniswapV2CallbackModule(_factory, _nativeWrapper, _cNative) {}
 
     function cTokenPair(address underlying, address underlyingOther) internal view override returns (address, address) {
         return IDataProvider(ps().dataProvider).cTokenPair(underlying, underlyingOther);

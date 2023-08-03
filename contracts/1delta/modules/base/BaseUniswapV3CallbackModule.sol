@@ -438,12 +438,7 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
         address payer,
         uint256 value
     ) internal {
-        address _nativeWrapper = wNative;
-        if (token == _nativeWrapper && address(this).balance >= value) {
-            // pay with nativeWrapper
-            _depositWeth(_nativeWrapper, value); // wrap only what is needed to pay
-            _transferERC20Tokens(_nativeWrapper, msg.sender, value);
-        } else if (payer == address(this)) {
+         if (payer == address(this)) {
             // pay with tokens already in the contract (for the exact input multihop case)
             _transferERC20Tokens(token, msg.sender, value);
         } else {
