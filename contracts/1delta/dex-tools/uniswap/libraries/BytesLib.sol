@@ -13,13 +13,7 @@ library BytesLib {
         bytes memory _bytes,
         uint256 _start,
         uint256 _length
-    ) internal pure returns (bytes memory) {
-        require(_length + 31 >= _length, 'slice_overflow');
-        require(_start + _length >= _start, 'slice_overflow');
-        require(_bytes.length >= _start + _length, 'slice_outOfBounds');
-
-        bytes memory tempBytes;
-
+    ) internal pure returns (bytes memory tempBytes) {
         assembly {
             switch iszero(_length)
                 case 0 {
@@ -71,8 +65,6 @@ library BytesLib {
                     mstore(0x40, add(tempBytes, 0x20))
                 }
         }
-
-        return tempBytes;
     }
 
     function toAddress(bytes memory _bytes, uint256 _start) internal pure returns (address) {

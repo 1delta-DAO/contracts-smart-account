@@ -23,6 +23,7 @@ import "../../interfaces/IDataProvider.sol";
 import "../../../periphery-standalone/interfaces/IMinimalSwapRouter.sol";
 import {UniswapDataHolder} from "../utils/UniswapDataHolder.sol";
 import "./BaseLendingHandler.sol";
+import {BaseSwapper} from "./BaseSwapper.sol";
 
 // solhint-disable max-line-length
 
@@ -32,7 +33,7 @@ import "./BaseLendingHandler.sol";
  * This cannot always work in swap scenarios with withdrawals, however, for repaying debt, the methods are consistent.
  * @author Achthar
  */
-abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapDataHolder, TokenTransfer {
+abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapDataHolder, TokenTransfer, BaseSwapper {
     using Path for bytes;
     using SafeCast for uint256;
 
@@ -53,16 +54,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
         address _factory,
         address _nativeWrapper,
         address _router
-    ) BaseLendingHandler(_nativeWrapper) UniswapDataHolder(_factory, _router) {}
-
-    /// @dev Returns the pool for the given token pair and fee. The pool contract may or may not exist.
-    function getUniswapV3Pool(
-        address tokenA,
-        address tokenB,
-        uint24 fee
-    ) private view returns (IUniswapV3Pool) {
-        return IUniswapV3Pool(PoolAddressCalculator.computeAddress(v3Factory, tokenA, tokenB, fee));
-    }
+    ) BaseLendingHandler(_nativeWrapper) UniswapDataHolder(_factory, _router) BaseSwapper(_factory) {}
 
     // money market functions
 
@@ -238,14 +230,11 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
     // ================= Trimming Positions ==========================
 
     // decrease the margin position - use the collateral (tokenIn) to pay back a borrow (tokenOut)
-    function trimMarginPositionAllIn(AllInputMultiParamsBase calldata params) external onlyOwner returns(uint256 amountOut) {
-        (address tokenIn, address tokenOut, uint24 fee) = params.path.decodeFirstPool();
-
-        MarginCallbackData memory data = MarginCallbackData({
-            path: params.path,
-            tradeType: 10,
-            exactIn: true
-        });
+    function trimMarginPositionAllIn(
+    uint256 amountOutMinimum,
+            bytes memory path
+    ) external onlyOwner returns(uint256 amountOut) {
+        (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
 
         bool zeroForOne = tokenIn < tokenOut;
 
@@ -255,23 +244,19 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
             zeroForOne,
             amountIn.toInt256(),
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-            abi.encode(data)
+            path
         );
 
         amountOut = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        require(params.amountOutMinimum <= amountOut, "Repaid too little");
+        require(amountOutMinimum <= amountOut, "Repaid too little");
     }
 
-    function trimMarginPositionAllOut(AllOutputMultiParamsBase calldata params) external onlyOwner returns(uint256 amountIn) {
-        (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
-
-        MarginCallbackData memory data = MarginCallbackData({
-            path: params.path,
-            tradeType: 10,
-            exactIn: false
-        });
-
+    function trimMarginPositionAllOut(
+            uint256 amountInMaximum,
+            bytes memory path
+    ) external onlyOwner returns(uint256 amountIn) {
+        (address tokenOut, address tokenIn, uint24 fee) = decodeFirstPool(path);
         bool zeroForOne = tokenIn < tokenOut;
 
         uint256 amountOut = borrowBalanceCurrent(tokenOut);
@@ -280,11 +265,11 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
             zeroForOne,
             -amountOut.toInt256(),
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-            abi.encode(data)
+            path
         );
 
         amountIn = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        require(params.amountInMaximum >= amountIn, "Had to pay too much");
+        require(amountInMaximum >= amountIn, "Had to pay too much");
     }
 }

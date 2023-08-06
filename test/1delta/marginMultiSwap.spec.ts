@@ -22,6 +22,7 @@ import {
     getMoneyMarketContract,
     supplyToCompound
 } from './shared/accountFactoryFixture';
+import { encodeAggregtorPathEthers } from './shared/aggregatorPath';
 import { expectToBeLess } from './shared/checkFunctions';
 import { CompoundFixture, CompoundOptions, generateCompoundFixture, ZERO } from './shared/compoundFixture';
 import { expect } from './shared/expect'
@@ -240,8 +241,14 @@ describe('Margin Multi Swap operations', async () => {
         const swapAmount = expandTo18Decimals(100)
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [6, 0, 0], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         await uniswap.tokens[supplyIndex].connect(alice).approve(accountAlice.address, constants.MaxUint256)
 
         const params = {
@@ -256,7 +263,7 @@ describe('Margin Multi Swap operations', async () => {
         const accountMM = await getMoneyMarketAccount(alice, accountAlice.address)
         await accountMM.mint(uniswap.tokens[supplyIndex].address, supplyAmount)
 
-        await accountAlice.connect(alice).openMarginPositionExactIn(params)
+        await accountAlice.connect(alice).openMarginPositionExactIn(params.amountIn, params.amountOutMinimum, params.path)
 
         const borrowPost = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
         const supplyPost = await compound.cTokens[supplyIndex].balanceOf(accountAlice.address)
@@ -280,9 +287,16 @@ describe('Margin Multi Swap operations', async () => {
 
         const swapAmount = expandTo18Decimals(100)
 
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
 
+        // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         await uniswap.tokens[supplyIndex].connect(bob).approve(accountBob.address, constants.MaxUint256)
 
         const params = {
@@ -297,7 +311,7 @@ describe('Margin Multi Swap operations', async () => {
         const accountMM = await getMoneyMarketAccount(bob, accountBob.address)
         await accountMM.mint(uniswap.tokens[supplyIndex].address, supplyAmount)
 
-        await accountBob.connect(bob).openMarginPositionExactOut(params)
+        await accountBob.connect(bob).openMarginPositionExactOut(params.amountOut, params.amountInMaximum, params.path)
 
         const borrowPost = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountBob.address)
         const supplyPost = await compound.cTokens[supplyIndex].balanceOf(accountBob.address)
@@ -321,12 +335,17 @@ describe('Margin Multi Swap operations', async () => {
 
         const swapAmount = expandTo18Decimals(100)
 
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         await uniswap.tokens[supplyIndex].connect(achi).approve(accountAchi.address, constants.MaxUint256)
 
-        let params: any = {
+        const params = {
             path,
             amountOut: swapAmount,
             amountInMaximum: swapAmount.mul(102).div(100),
@@ -335,7 +354,7 @@ describe('Margin Multi Swap operations', async () => {
         const accountMM = await getMoneyMarketAccount(achi, accountAchi.address)
         await accountMM.mint(uniswap.tokens[supplyIndex].address, supplyAmount)
 
-        await accountAchi.connect(achi).openMarginPositionExactOut(params)
+        await accountAchi.connect(achi).openMarginPositionExactOut(params.amountOut, params.amountInMaximum, params.path)
 
 
         await network.provider.send("evm_increaseTime", [3600])
@@ -344,14 +363,21 @@ describe('Margin Multi Swap operations', async () => {
         const borrowPre = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAchi.address)
         const supplyPre = await compound.cTokens[supplyIndex].balanceOf(accountAchi.address)
 
+        const pathTrim = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [7, 0, 0], // action
+            [0, 0, 0], // pid
+            7 // flag
+        )
+
         const repayIn = expandTo18Decimals(90)
-        params = {
-            path,
+        const paramsTrim = {
+            path: pathTrim,
             amountIn: repayIn,
             amountOutMinimum: repayIn.mul(99).div(100),
         }
-
-        await accountAchi.connect(achi).trimMarginPositionExactIn(params)
+        await accountAchi.connect(achi).trimMarginPositionExactIn(paramsTrim.amountIn, paramsTrim.amountOutMinimum, paramsTrim.path)
 
         const borrowPost = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAchi.address)
         const supplyPost = await compound.cTokens[supplyIndex].balanceOf(accountAchi.address)
@@ -376,11 +402,16 @@ describe('Margin Multi Swap operations', async () => {
         const swapAmount = expandTo18Decimals(100)
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [6, 0, 0], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         await uniswap.tokens[supplyIndex].connect(gabi).approve(accountGabi.address, constants.MaxUint256)
 
-        let params: any = {
+        const params = {
             path,
             amountIn: swapAmount,
             amountOutMinimum: swapAmount.mul(98).div(100),
@@ -392,19 +423,28 @@ describe('Margin Multi Swap operations', async () => {
         const accountMM = await getMoneyMarketAccount(gabi, accountGabi.address)
         await accountMM.mint(uniswap.tokens[supplyIndex].address, supplyAmount)
 
-        await accountGabi.connect(gabi).openMarginPositionExactIn(params)
+        await accountGabi.connect(gabi).openMarginPositionExactIn(params.amountIn, params.amountOutMinimum, params.path)
 
         const borrowPre = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountGabi.address)
         const supplyPre = await compound.cTokens[supplyIndex].balanceOf(accountGabi.address)
 
         const repayOut = expandTo18Decimals(90)
-        params = {
-            path,
+
+        const pathTrim = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [3, 1, 1,], // action
+            [0, 0, 0], // pid
+            3 // flag
+        )
+
+        const paramsTrim = {
+            path: pathTrim,
             amountOut: repayOut,
             amountInMaximum: repayOut.mul(101).div(100)
         }
 
-        await accountGabi.connect(gabi).trimMarginPositionExactOut(params)
+        await accountGabi.connect(gabi).trimMarginPositionExactOut(paramsTrim.amountOut, paramsTrim.amountInMaximum, paramsTrim.path)
 
         const borrowPost = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountGabi.address)
         const supplyPost = await compound.cTokens[supplyIndex].balanceOf(accountGabi.address)
@@ -428,8 +468,14 @@ describe('Margin Multi Swap operations', async () => {
         const swapAmount = expandTo18Decimals(1)
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [6, 0, 0], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         await uniswap.tokens[supplyIndex].connect(alice).approve(accountAlice.address, constants.MaxUint256)
 
         const params = {
@@ -444,7 +490,7 @@ describe('Margin Multi Swap operations', async () => {
         const accountMM = await getMoneyMarketAccount(alice, accountAlice.address)
         await accountMM.mint(uniswap.tokens[supplyIndex].address, supplyAmount)
 
-        await accountAlice.connect(alice).openMarginPositionExactIn(params)
+        await accountAlice.connect(alice).openMarginPositionExactIn(params.amountIn, params.amountOutMinimum, params.path)
 
         const borrowPost = await compound.cEther.callStatic.borrowBalanceCurrent(accountAlice.address)
         const supplyPost = await compound.cTokens[supplyIndex].balanceOf(accountAlice.address)
@@ -467,9 +513,15 @@ describe('Margin Multi Swap operations', async () => {
 
         const swapAmount = expandTo18Decimals(1)
 
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         await uniswap.tokens[supplyIndex].connect(bob).approve(accountBob.address, constants.MaxUint256)
 
         const params = {
@@ -485,7 +537,7 @@ describe('Margin Multi Swap operations', async () => {
         await accountMM.mint(uniswap.tokens[supplyIndex].address, supplyAmount)
 
 
-        await accountBob.connect(bob).openMarginPositionExactOut(params)
+        await accountBob.connect(bob).openMarginPositionExactOut(params.amountOut, params.amountInMaximum, params.path)
 
         const borrowPost = await compound.cEther.callStatic.borrowBalanceCurrent(accountBob.address)
         const supplyPost = await compound.cTokens[supplyIndex].balanceOf(accountBob.address)
@@ -508,8 +560,14 @@ describe('Margin Multi Swap operations', async () => {
         const swapAmount = expandTo18Decimals(1)
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [6, 0, 0,], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         const params = {
             path,
             amountIn: swapAmount,
@@ -523,7 +581,7 @@ describe('Margin Multi Swap operations', async () => {
         const accountMM = await getMoneyMarketAccount(alice, accountAlice.address)
         await accountMM.mintEther({ value: supplyAmount })
 
-        await accountAlice.connect(alice).openMarginPositionExactInToETH(params)
+        await accountAlice.connect(alice).openMarginPositionExactIn(params.amountIn, params.amountOutMinimum, params.path)
 
         const borrowPost = await compound.cTokens[borrowIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
         const supplyPost = await compound.cEther.balanceOf(accountAlice.address)
@@ -546,9 +604,15 @@ describe('Margin Multi Swap operations', async () => {
 
         const swapAmount = expandTo18Decimals(1)
 
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         const params = {
             path,
             amountOut: swapAmount,
@@ -561,7 +625,7 @@ describe('Margin Multi Swap operations', async () => {
         const accountMM = await getMoneyMarketAccount(bob, accountBob.address)
         await accountMM.mintEther({ value: supplyAmount })
 
-        await accountBob.connect(bob).openMarginPositionExactOutToETH(params, { value: supplyAmount })
+        await accountBob.connect(bob).openMarginPositionExactOut(params.amountOut, params.amountInMaximum, params.path)
 
         const borrowPost = await compound.cTokens[borrowIndex].callStatic.borrowBalanceCurrent(accountBob.address)
         const supplyPost = await compound.cEther.balanceOf(accountBob.address)
@@ -584,10 +648,16 @@ describe('Margin Multi Swap operations', async () => {
 
         const swapAmount = expandTo18Decimals(1)
 
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
-        let params: any = {
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
+        const params = {
             path,
             amountOut: swapAmount,
             amountInMaximum: swapAmount.mul(104).div(100),
@@ -595,7 +665,7 @@ describe('Margin Multi Swap operations', async () => {
 
         await supplyToCompound(achi, accountAchi.address, 3, supplyAmount.mul(5), uniswap)
 
-        await accountAchi.connect(achi).openMarginPositionExactOutToETH(params, { value: supplyAmount })
+        await accountAchi.connect(achi).openMarginPositionExactOut(params.amountOut, params.amountInMaximum, params.path)
 
         await network.provider.send("evm_increaseTime", [3600])
         await network.provider.send("evm_mine")
@@ -603,14 +673,22 @@ describe('Margin Multi Swap operations', async () => {
         const borrowPre = await compound.cTokens[borrowIndex].callStatic.borrowBalanceCurrent(accountAchi.address)
         const supplyPre = await compound.cEther.balanceOf(accountAchi.address)
 
+        const pathTrim = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [7, 0, 0], // action
+            [0, 0, 0], // pid
+            7 // flag
+        )
+
         const repayIn = expandTo18Decimals(1)
-        params = {
-            path,
+        const paramsTrim = {
+            path: pathTrim,
             amountIn: repayIn,
             amountOutMinimum: repayIn.mul(99).div(100)
         }
 
-        await accountAchi.connect(achi).trimMarginPositionExactIn(params)
+        await accountAchi.connect(achi).trimMarginPositionExactIn(paramsTrim.amountIn, paramsTrim.amountOutMinimum, paramsTrim.path)
 
         const borrowPost = await compound.cTokens[borrowIndex].callStatic.borrowBalanceCurrent(accountAchi.address)
         const supplyPost = await compound.cEther.balanceOf(accountAchi.address)
@@ -633,17 +711,24 @@ describe('Margin Multi Swap operations', async () => {
 
         const swapAmount = expandTo18Decimals(1)
 
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
 
-        let params: any = {
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
+        const params = {
             path,
             amountOut: swapAmount,
             amountInMaximum: swapAmount.mul(103).div(100),
         }
 
         await uniswap.tokens[supplyIndex].connect(gabi).approve(accountGabi.address, constants.MaxUint256)
-        await accountGabi.connect(gabi).openMarginPositionExactOut(params)
+        await accountGabi.connect(gabi).openMarginPositionExactOut(params.amountOut, params.amountInMaximum, params.path)
 
         await network.provider.send("evm_increaseTime", [3600])
         await network.provider.send("evm_mine")
@@ -651,14 +736,21 @@ describe('Margin Multi Swap operations', async () => {
         const borrowPre = await compound.cEther.callStatic.borrowBalanceCurrent(accountGabi.address)
         const supplyPre = await compound.cTokens[supplyIndex].balanceOf(accountGabi.address)
 
+        const pathTrim = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [7, 0, 0], // action
+            [0, 0, 0], // pid
+            7 // flag
+        )
         const repayIn = expandTo18Decimals(1)
-        params = {
-            path,
+        const paramsTrim = {
+            path: pathTrim,
             amountIn: repayIn,
             amountOutMinimum: repayIn.mul(99).div(100),
         }
 
-        await accountGabi.connect(gabi).trimMarginPositionExactIn(params)
+        await accountGabi.connect(gabi).trimMarginPositionExactIn(paramsTrim.amountIn, paramsTrim.amountOutMinimum, paramsTrim.path)
 
         const borrowPost = await compound.cEther.callStatic.borrowBalanceCurrent(accountGabi.address)
         const supplyPost = await compound.cTokens[supplyIndex].balanceOf(accountGabi.address)
@@ -680,11 +772,10 @@ describe('Margin Multi Swap operations', async () => {
         await network.provider.send("evm_mine")
 
         const accountGabiAlt = await createMarginTradingAccount(gabi, accountFixture, true)
-        const swapAmount = expandTo18Decimals(100)
         const borrowAmount = expandTo18Decimals(50)
 
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
 
         await uniswap.tokens[supplyIndex].connect(gabi).approve(accountGabiAlt.address, constants.MaxUint256)
         await uniswap.tokens[swapInIndex].connect(gabi).approve(accountGabiAlt.address, constants.MaxUint256)
@@ -692,25 +783,27 @@ describe('Margin Multi Swap operations', async () => {
         await supplyToCompound(gabi, accountGabiAlt.address, supplyIndex, supplyAmount, uniswap)
         await borrowFromCompound(gabi, accountGabiAlt.address, borrowTokenIndex, borrowAmount, uniswap)
 
-        let params: any = {
-            path,
-            amountIn: swapAmount,
-            amountOutMinimum: swapAmount.mul(99).div(100)
-        }
 
         await network.provider.send("evm_increaseTime", [3600])
         await network.provider.send("evm_mine")
 
         const supplyPre = await compound.cTokens[swapInIndex].balanceOf(accountGabiAlt.address)
 
-        params = {
-            path,
+        const pathTrim = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [3, 1, 1,], // action
+            [0, 0, 0], // pid
+            3 // flag
+        )
+        const paramsTrim = {
+            path: pathTrim,
             amountInMaximum: constants.MaxUint256
         }
 
         const absAccount = await getAbsoluteMarginTraderAccount(gabi, accountGabiAlt.address)
 
-        await absAccount.connect(gabi).trimMarginPositionAllOut(params)
+        await absAccount.connect(gabi).trimMarginPositionAllOut(paramsTrim.amountInMaximum, paramsTrim.path)
 
         const borrowPost = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountGabiAlt.address)
         const supplyPost = await compound.cTokens[swapInIndex].balanceOf(accountGabiAlt.address)
@@ -734,7 +827,7 @@ describe('Margin Multi Swap operations', async () => {
         await network.provider.send("evm_mine")
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
 
         await uniswap.tokens[supplyIndex].connect(achi).approve(accountAchiAlt.address, constants.MaxUint256)
         await uniswap.tokens[swapTokenIndex].connect(achi).approve(accountAchiAlt.address, constants.MaxUint256)
@@ -746,15 +839,23 @@ describe('Margin Multi Swap operations', async () => {
         await network.provider.send("evm_mine")
 
         const borrowPre = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAchiAlt.address)
+        const pathTrim = encodeAggregtorPathEthers(
+            _tokensInRoute.reverse(),
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [7, 0, 0], // action
+            [0, 0, 0], // pid
+            7 // flag
+        )
 
-        let params = {
-            path,
+
+        const paramsTrim = {
+            path: pathTrim,
             amountOutMinimum: borrowPre.mul(90).div(100)
         }
 
         const absAccount = await getAbsoluteMarginTraderAccount(gabi, accountAchiAlt.address)
 
-        await absAccount.connect(achi).trimMarginPositionAllIn(params)
+        await absAccount.connect(achi).trimMarginPositionAllIn(paramsTrim.amountOutMinimum, paramsTrim.path)
 
         const borrowPost = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAchiAlt.address)
         const supplyPost = await compound.cTokens[swapTokenIndex].balanceOf(accountAchiAlt.address)
@@ -781,9 +882,8 @@ describe('Margin Multi Swap operations', async () => {
 
 
         await expect(
-            accountAlice.connect(bob).openMarginPositionExactIn(params)
+            accountAlice.connect(bob).openMarginPositionExactIn(params.amountIn, params.amountOutMinimum, params.path)
         ).to.be.revertedWith(revertMessage)
-
         params = {
             path,
             amountOut: swapAmount,
@@ -791,54 +891,32 @@ describe('Margin Multi Swap operations', async () => {
         }
 
         await expect(
-            accountBob.connect(achi).openMarginPositionExactOut(params)
+            accountBob.connect(achi).openMarginPositionExactOut(params.amountOut, params.amountInMaximum, params.path)
         ).to.be.revertedWith(revertMessage)
-
         params = {
             path,
             amountIn: swapAmount,
             amountOutMinimum: constants.MaxUint256
         }
         await expect(
-            accountAchi.connect(gabi).trimMarginPositionExactIn(params)
+            accountAchi.connect(gabi).trimMarginPositionExactIn(params.amountIn, params.amountOutMinimum, params.path)
         ).to.be.revertedWith(revertMessage)
-
         const accountAchiAlt = await getAbsoluteMarginTraderAccount(achi, accountAchi.address)
         await expect(
-            accountAchiAlt.connect(gabi).trimMarginPositionAllIn(params)
+            accountAchiAlt.connect(gabi).trimMarginPositionAllIn(params.amountOutMinimum, params.path)
         ).to.be.revertedWith(revertMessage)
-
         params = {
             path,
             amountOut: swapAmount,
             amountInMaximum: constants.MaxUint256
         }
         await expect(
-            accountGabi.connect(achi).trimMarginPositionExactOut(params)
+            accountGabi.connect(achi).trimMarginPositionExactOut(params.amountOut, params.amountInMaximum, params.path)
         ).to.be.revertedWith(revertMessage)
 
         const accountGabiAlt = await getAbsoluteMarginTraderAccount(gabi, accountGabi.address)
         await expect(
-            accountGabiAlt.connect(achi).trimMarginPositionAllOut(params)
-        ).to.be.revertedWith(revertMessage)
-
-        params = {
-            path,
-            amountOut: swapAmount,
-            amountInMaximum: constants.MaxUint256
-        }
-        await expect(
-            accountAchi.connect(gabi).openMarginPositionExactOutToETH(params, { value: supplyAmount })
-        ).to.be.revertedWith(revertMessage)
-
-
-        params = {
-            path,
-            amountIn: swapAmount,
-            amountOutMinimum: constants.MaxUint256
-        }
-        await expect(
-            accountAlice.connect(bob).openMarginPositionExactInToETH(params, { value: supplyAmount })
+            accountGabiAlt.connect(achi).trimMarginPositionAllOut(params.amountInMaximum, params.path)
         ).to.be.revertedWith(revertMessage)
     })
 
@@ -848,24 +926,16 @@ describe('Margin Multi Swap operations', async () => {
 // |                                      Solc version: 0.8.21                                      ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
 // ·································································································|···························|·················|······························
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactIn           ·     680350  ·     793753  ·         747900  ·            3  ·          -  │
+// |  MarginTraderModule                                   ·  openMarginPositionExactIn           ·     663260  ·     776713  ·         729554  ·            4  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactInToETH      ·          -  ·          -  ·         742803  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  openMarginPositionExactOut          ·     649567  ·     752560  ·         685643  ·            6  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactOut          ·     664447  ·     767486  ·         705037  ·            4  ·          -  │
+// |  MarginTraderModule                                   ·  trimMarginPositionExactIn           ·     395904  ·     627485  ·         541606  ·            3  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  openMarginPositionExactOutToETH     ·     677984  ·     705152  ·         691568  ·            2  ·          -  │
+// |  MarginTraderModule                                   ·  trimMarginPositionExactOut          ·          -  ·          -  ·         568420  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  trimMarginPositionExactIn           ·     412925  ·     644553  ·         558706  ·            3  ·          -  │
+// |  SweeperModule                                        ·  trimMarginPositionAllIn             ·          -  ·          -  ·         631432  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  trimMarginPositionExactOut          ·          -  ·          -  ·         583299  ·            1  ·          -  │
+// |  SweeperModule                                        ·  trimMarginPositionAllOut            ·          -  ·          -  ·         618324  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  trimMarginPositionAllIn             ·          -  ·          -  ·         648448  ·            1  ·          -  │
-// ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  trimMarginPositionAllOut            ·          -  ·          -  ·         633183  ·            1  ·          -  │
-// ························································|······································|·············|·············|·················|···············|··············
-
-
-
-
 

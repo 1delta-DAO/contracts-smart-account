@@ -27,3 +27,26 @@ export function encodeAggregtorPathEthers(path: string[], fees: FeeAmount[], fla
 
   return ethers.utils.solidityPack(types, data)
 }
+
+
+enum Trade{
+  Open = 'Open',
+  Trim = 'Trim',
+  Collateral = 'Collateral',
+  Debt = 'Debt'
+}
+
+enum TradeType {
+  exactIn = 'exactIn',
+  exactOut = 'exactOut'
+}
+
+const encodeTradePath = (route: string[], trade:Trade, tradeType:TradeType) =>{
+  encodeAggregtorPathEthers(
+      route,
+      new Array(route.length - 1).fill(FeeAmount.MEDIUM),
+      [7, 0, 0], // action
+      [0, 0, 0], // pid
+      7 // flag
+  )
+}

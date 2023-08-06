@@ -8,7 +8,7 @@ import {IDataProvider, IComptroller, ICompoundTypeCERC20, ICompoundTypeCEther} f
 import {ICompoundTypeCToken} from "../interfaces/compound/ICompoundTypeCToken.sol";
 import "./base/BaseSweeperModule.sol";
 import {CompoundHandler} from "./utils/CompoundHandler.sol";
-
+import {BaseSwapper} from "./base/BaseSwapper.sol";
 // solhint-disable max-line-length
 
 /**
