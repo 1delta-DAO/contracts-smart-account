@@ -129,11 +129,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
 
     function swapAndRepayAllOut(AllOutputMultiParamsBase calldata params) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
-        MarginCallbackData memory data = MarginCallbackData({
-            path: params.path,
-            tradeType: 12,
-            exactIn: false
-        });
+        MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 12, exactIn: false});
         cs().cachedAddress = msg.sender;
         uint256 amountOut = borrowBalanceCurrent(tokenOut);
         bool zeroForOne = tokenIn < tokenOut;
@@ -161,9 +157,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
         _weth.approve(router, type(uint256).max);
         uint256 amountOut = borrowBalanceCurrent(params.path.getFirstToken());
         // use the swap router to swap exact out
-        amountIn = IMinimalSwapRouter(router).exactOutputToSelf(
-            MinimalExactOutputMultiParams({path: params.path, amountOut: amountOut})
-        );
+        amountIn = IMinimalSwapRouter(router).exactOutputToSelf(MinimalExactOutputMultiParams({path: params.path, amountOut: amountOut}));
         require(amountIn <= params.amountInMaximum, "had to pay too much");
 
         // deposit received amount to the lending protocol on behalf of user
@@ -177,14 +171,8 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
     // margin trader functions
 
     // swaps the loan from one token (tokenIn) to another (tokenOut) provided tokenOut amount
-    function swapBorrowAllOut(AllOutputMultiParamsBase calldata params) external onlyOwner returns (uint256 amountIn) {
-        (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
-
-        MarginCallbackData memory data = MarginCallbackData({
-            path: params.path,
-            tradeType: 2,
-            exactIn: false
-        });
+    function swapBorrowAllOut(uint256 amountInMaximum, bytes calldata path) external onlyOwner returns (uint256 amountIn) {
+        (address tokenOut, address tokenIn, uint24 fee) = decodeFirstPool(path);
 
         bool zeroForOne = tokenIn < tokenOut;
 
@@ -194,46 +182,38 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
             zeroForOne,
             -amountOut.toInt256(),
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-            abi.encode(data)
+            path
         );
 
         amountIn = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        require(params.amountInMaximum >= amountIn, "Had to borrow too much");
+        require(amountInMaximum >= amountIn, "Had to borrow too much");
     }
 
     // swaps the collateral from one token (tokenIn) to another (tokenOut) provided tokenOut amount
-    function swapCollateralAllIn(AllInputMultiParamsBase calldata params) external onlyOwner returns(uint256 amountOut) {
-        (address tokenIn, address tokenOut, uint24 fee) = params.path.decodeFirstPool();
-        MarginCallbackData memory data = MarginCallbackData({
-            path: params.path,
-            tradeType: 4,
-            exactIn: true
-        });
+    function swapCollateralAllIn(uint256 amountOutMinimum, bytes calldata path) external onlyOwner returns (uint256 amountOut) {
+        (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
 
         bool zeroForOne = tokenIn < tokenOut;
 
-        uint256 amountIn = balanceOfUnderlying(params.path.getFirstToken());
+        uint256 amountIn = balanceOfUnderlying(path.getFirstToken());
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
             address(this),
             zeroForOne,
             amountIn.toInt256(),
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-            abi.encode(data)
+            path
         );
 
         amountOut = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        require( params.amountOutMinimum <= amountOut, "Deposited too little");
+        require(amountOutMinimum <= amountOut, "Deposited too little");
     }
 
     // ================= Trimming Positions ==========================
 
     // decrease the margin position - use the collateral (tokenIn) to pay back a borrow (tokenOut)
-    function trimMarginPositionAllIn(
-    uint256 amountOutMinimum,
-            bytes memory path
-    ) external onlyOwner returns(uint256 amountOut) {
+    function trimMarginPositionAllIn(uint256 amountOutMinimum, bytes calldata path) external onlyOwner returns (uint256 amountOut) {
         (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
 
         bool zeroForOne = tokenIn < tokenOut;
@@ -252,10 +232,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapD
         require(amountOutMinimum <= amountOut, "Repaid too little");
     }
 
-    function trimMarginPositionAllOut(
-            uint256 amountInMaximum,
-            bytes memory path
-    ) external onlyOwner returns(uint256 amountIn) {
+    function trimMarginPositionAllOut(uint256 amountInMaximum, bytes memory path) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = decodeFirstPool(path);
         bool zeroForOne = tokenIn < tokenOut;
 

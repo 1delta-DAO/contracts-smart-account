@@ -19,6 +19,7 @@ import {
     getMoneyMarketContract,
     supplyToCompound
 } from './shared/accountFactoryFixture';
+import { encodeAggregtorPathEthers } from './shared/aggregatorPath';
 import { expectToBeLess } from './shared/checkFunctions';
 import { CompoundFixture, CompoundOptions, generateCompoundFixture } from './shared/compoundFixture';
 import { expect } from './shared/expect'
@@ -199,15 +200,21 @@ describe('Collateral Multi Swap operations', async () => {
         const swapAmount = expandTo18Decimals(50)
 
         let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address)
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [7, 0, 0], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         const params = {
             path,
             amountIn: swapAmount,
             amountOutMinimum: swapAmount.mul(99).div(100)
         }
 
-        await accountAlice.connect(alice).swapBorrowExactIn(params)
+        await accountAlice.connect(alice).swapBorrowExactIn(params.amountIn, params.amountOutMinimum, params.path)
 
         const borrow0 = await compound.cTokens[borrowTokenIndex_0].callStatic.borrowBalanceCurrent(accountAlice.address)
         const borrow1 = await compound.cTokens[borrowTokenIndex_1].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -236,9 +243,15 @@ describe('Collateral Multi Swap operations', async () => {
 
         const swapAmount = expandTo18Decimals(50)
 
-        let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address)
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address).reverse()
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [3, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
         const params = {
             path,
             amountOut: swapAmount,
@@ -249,7 +262,7 @@ describe('Collateral Multi Swap operations', async () => {
         const borrow1Pre = await compound.cTokens[borrowTokenIndex_1].callStatic.borrowBalanceCurrent(accountBob.address)
 
 
-        await accountBob.connect(bob).swapBorrowExactOut(params)
+        await accountBob.connect(bob).swapBorrowExactOut(params.amountOut, params.amountInMaximum, params.path)
 
         const borrow0 = await compound.cTokens[borrowTokenIndex_0].callStatic.borrowBalanceCurrent(accountBob.address)
         const borrow1 = await compound.cTokens[borrowTokenIndex_1].callStatic.borrowBalanceCurrent(accountBob.address)
@@ -275,15 +288,21 @@ describe('Collateral Multi Swap operations', async () => {
 
 
         let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address)
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [6, 0, 0], // action
+            [0, 0, 0], // pid
+            5// flag
+        )
         const params = {
             path,
             amountIn: swapAmount,
             amountOutMinimum: swapAmount.mul(95).div(100)
         }
 
-        await accountAchi.connect(achi).swapCollateralExactIn(params)
+        await accountAchi.connect(achi).swapCollateralExactIn(params.amountIn, params.amountOutMinimum, params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndexFrom].callStatic.balanceOfUnderlying(accountAchi.address)
         expect(supply0.toString()).to.equal(supplyAmount.sub(swapAmount))
@@ -309,16 +328,22 @@ describe('Collateral Multi Swap operations', async () => {
         const swapAmount = expandTo18Decimals(900)
 
 
-        let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address)
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address).reverse()
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4, 1, 1], // action
+            [0, 0, 0], // pid
+            3 // flag
+        )
         const params = {
             path,
             amountOut: swapAmount,
             amountInMaximum: swapAmount.mul(105).div(100)
         }
 
-        await accountGabi.connect(gabi).swapCollateralExactOut(params)
+        await accountGabi.connect(gabi).swapCollateralExactOut(params.amountOut, params.amountInMaximum, params.path)
 
 
         const supply1 = await compound.cTokens[supplyTokenIndexTo].balanceOf(accountGabi.address)
@@ -343,17 +368,23 @@ describe('Collateral Multi Swap operations', async () => {
 
 
         let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address)
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
 
         const supply0Before = await compound.cTokens[supplyTokenIndexFrom].callStatic.balanceOfUnderlying(accountAchi.address)
         const supply1Before = await compound.cTokens[supplyTokenIndexTo].callStatic.balanceOfUnderlying(accountAchi.address)
-
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [6, 0, 0], // action
+            [0, 0, 0], // pid
+            5// flag
+        )
         const params = {
             path,
             amountOutMinimum: supply1Before.mul(99).div(100)
         }
         const accountAlt = await getAbsoluteMarginTraderAccount(achi, accountAchi.address)
-        await accountAlt.connect(achi).swapCollateralAllIn(params)
+        await accountAlt.connect(achi).swapCollateralAllIn(params.amountOutMinimum, params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndexFrom].callStatic.balanceOfUnderlying(accountAchi.address)
         const supply1 = await compound.cTokens[supplyTokenIndexTo].callStatic.balanceOfUnderlying(accountAchi.address)
@@ -383,12 +414,19 @@ describe('Collateral Multi Swap operations', async () => {
 
         await borrowFromCompound(bob, accountBob.address, borrowTokenIndex_1, borrowAmount_1, uniswap)
 
-        let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address)
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address).reverse()
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
 
 
         const borrow0Pre = await compound.cTokens[borrowTokenIndex_0].callStatic.borrowBalanceCurrent(accountBob.address)
         const borrow1Pre = await compound.cTokens[borrowTokenIndex_1].callStatic.borrowBalanceCurrent(accountBob.address)
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [3, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
 
         const params = {
             path,
@@ -398,7 +436,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         const accountAlt = await getAbsoluteMarginTraderAccount(bob, accountBob.address)
 
-        await accountAlt.connect(bob).swapBorrowAllOut(params)
+        await accountAlt.connect(bob).swapBorrowAllOut(params.amountInMaximum, params.path)
 
         const borrow0 = await compound.cTokens[borrowTokenIndex_0].callStatic.borrowBalanceCurrent(accountBob.address)
         const borrow1 = await compound.cTokens[borrowTokenIndex_1].callStatic.borrowBalanceCurrent(accountBob.address)
@@ -423,7 +461,7 @@ describe('Collateral Multi Swap operations', async () => {
         }
 
         await expect(
-            accountAlice.connect(bob).swapBorrowExactIn(params)
+            accountAlice.connect(bob).swapBorrowExactIn(params.amountIn, params.amountOutMinimum, params.path)
         ).to.be.revertedWith(errorMessage)
 
         const paramswapBorrowExactOut = {
@@ -432,12 +470,12 @@ describe('Collateral Multi Swap operations', async () => {
             amountInMaximum: constants.MaxUint256
         }
         await expect(
-            accountBob.connect(alice).swapBorrowExactOut(paramswapBorrowExactOut)
+            accountBob.connect(alice).swapBorrowExactOut(paramswapBorrowExactOut.amountOut, paramswapBorrowExactOut.amountInMaximum, paramswapBorrowExactOut.path)
         ).to.be.revertedWith(errorMessage)
 
         let accountAlt = await getAbsoluteMarginTraderAccount(bob, accountBob.address)
         await expect(
-            accountAlt.connect(alice).swapBorrowAllOut(paramswapBorrowExactOut)
+            accountAlt.connect(alice).swapBorrowAllOut(paramswapBorrowExactOut.amountInMaximum, paramswapBorrowExactOut.path)
         ).to.be.revertedWith(errorMessage)
 
 
@@ -447,13 +485,13 @@ describe('Collateral Multi Swap operations', async () => {
             amountOutMinimum: 0
         }
         await expect(
-            accountAchi.connect(gabi).swapCollateralExactIn(paramswapCollateralExactIn)
+            accountAchi.connect(gabi).swapCollateralExactIn(paramswapCollateralExactIn.amountIn, paramswapCollateralExactIn.amountOutMinimum, paramswapCollateralExactIn.path)
         ).to.be.revertedWith(errorMessage)
 
         accountAlt = await getAbsoluteMarginTraderAccount(achi, accountAchi.address)
 
         await expect(
-            accountAlt.connect(gabi).swapCollateralAllIn(paramswapCollateralExactIn)
+            accountAlt.connect(gabi).swapCollateralAllIn(params.amountOutMinimum, params.path)
         ).to.be.revertedWith(errorMessage)
 
 
@@ -463,7 +501,7 @@ describe('Collateral Multi Swap operations', async () => {
             amountInMaximum: constants.MaxUint256
         }
         await expect(
-            accountGabi.connect(achi).swapCollateralExactOut(paramswapCollateralExactOut)
+            accountGabi.connect(achi).swapCollateralExactOut(paramswapCollateralExactOut.amountOut, paramswapCollateralExactOut.amountInMaximum, paramswapCollateralExactOut.path)
         ).to.be.revertedWith(errorMessage)
     })
 
@@ -474,19 +512,18 @@ describe('Collateral Multi Swap operations', async () => {
 // ·······························································································|···························|·················|······························
 // |  Methods                                                                                                                                                                 │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapBorrowExactIn                   ·          -  ·          -  ·         698183  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapBorrowExactIn                   ·          -  ·          -  ·         681081  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapBorrowExactOut                  ·          -  ·          -  ·         610220  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapBorrowExactOut                  ·          -  ·          -  ·         595245  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapCollateralExactIn               ·          -  ·          -  ·         655838  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapCollateralExactIn               ·          -  ·          -  ·         638780  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapCollateralExactOut              ·          -  ·          -  ·         638968  ·            1  ·          -  │
+// |  MarginTraderModule                                   ·  swapCollateralExactOut              ·          -  ·          -  ·         624213  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  swapBorrowAllOut                    ·          -  ·          -  ·         642289  ·            1  ·          -  │
+// |  SweeperModule                                        ·  swapBorrowAllOut                    ·          -  ·          -  ·         627205  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  SweeperModule                                        ·  swapCollateralAllIn                 ·          -  ·          -  ·         691697  ·            1  ·          -  │
+// |  SweeperModule                                        ·  swapCollateralAllIn                 ·          -  ·          -  ·         674304  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
-
 
 
 

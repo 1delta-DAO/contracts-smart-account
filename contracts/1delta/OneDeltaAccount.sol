@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 /******************************************************************************\
 * Author: Achthar - 1delta.io
-* Title:  1Delta Margin Trading Account
+* Title:  1delta Margin Trading Account
 * Implementation of a diamond that fetches its modules from another contract.
 /******************************************************************************/
 

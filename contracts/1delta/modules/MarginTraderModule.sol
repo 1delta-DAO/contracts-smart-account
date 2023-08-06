@@ -2,13 +2,6 @@
 
 pragma solidity ^0.8.21;
 
-import {
-    MarginCallbackData,
-    ExactInputMultiParams,
-    ExactOutputMultiParams,
-    MarginSwapParamsMultiExactIn,
-    MarginSwapParamsMultiExactOut
- } from "../dataTypes/InputTypes.sol";
 import {IUniswapV3Pool} from "../../external-protocols/uniswapV3/core/interfaces/IUniswapV3Pool.sol";
 import "../../external-protocols/uniswapV3/periphery/interfaces/ISwapRouter.sol";
 import "../../external-protocols/uniswapV3/core/interfaces/callback/IUniswapV3SwapCallback.sol";
@@ -47,94 +40,102 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
         v3Factory = _factory;
     }
 
-    function swapBorrowExactIn(ExactInputMultiParams memory params) external onlyOwner returns (uint256 amountOut) {
-        (address tokenIn, address tokenOut, uint24 fee) = params.path.decodeFirstPool();
-
-        MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 2, exactIn: true});
+    function swapBorrowExactIn(
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        bytes calldata path
+    ) external onlyOwner returns (uint256 amountOut) {
+        (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
 
         bool zeroForOne = tokenIn < tokenOut;
 
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
             address(this),
             zeroForOne,
-            params.amountIn.toInt256(),
+            amountIn.toInt256(),
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-            abi.encode(data)
+            path
         );
 
         amountOut = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        require(params.amountOutMinimum <= amountOut, "Repaid too little");
+        require(amountOutMinimum <= amountOut, "Repaid too little");
     }
 
     // swaps the loan from one token (tokenIn) to another (tokenOut) provided tokenOut amount
-    function swapBorrowExactOut(ExactOutputMultiParams memory params) external onlyOwner returns (uint256 amountIn) {
-        (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
-
-        MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 2, exactIn: false});
+    function swapBorrowExactOut(
+        uint256 amountOut,
+        uint256 amountInMaximum,
+        bytes calldata path
+    ) external onlyOwner returns (uint256 amountIn) {
+        (address tokenOut, address tokenIn, uint24 fee) = decodeFirstPool(path);
 
         bool zeroForOne = tokenIn < tokenOut;
 
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
             address(this),
             zeroForOne,
-            -params.amountOut.toInt256(),
+            -amountOut.toInt256(),
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-            abi.encode(data)
+            path
         );
 
         amountIn = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        require(params.amountInMaximum >= amountIn, "Had to borrow too much");
+        require(amountInMaximum >= amountIn, "Had to borrow too much");
     }
 
     // swaps the collateral from one token (tokenIn) to another (tokenOut) provided tokenOut amount
-    function swapCollateralExactIn(ExactInputMultiParams memory params) external onlyOwner returns (uint256 amountOut) {
-        (address tokenIn, address tokenOut, uint24 fee) = params.path.decodeFirstPool();
-        MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 4, exactIn: true});
-
+    function swapCollateralExactIn(
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        bytes calldata path
+    ) external onlyOwner returns (uint256 amountOut) {
+        (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
         bool zeroForOne = tokenIn < tokenOut;
 
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
             address(this),
             zeroForOne,
-            params.amountIn.toInt256(),
+            amountIn.toInt256(),
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-            abi.encode(data)
+            path
         );
 
         amountOut = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        require(params.amountOutMinimum <= amountOut, "Deposited too little");
+        require(amountOutMinimum <= amountOut, "Deposited too little");
     }
 
     // swaps the collateral from one token (tokenIn) to another (tokenOut) provided tokenOut amount
-    function swapCollateralExactOut(ExactOutputMultiParams memory params) external onlyOwner returns (uint256 amountIn) {
-        (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
-
-        MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 4, exactIn: false});
+    function swapCollateralExactOut(
+        uint256 amountOut,
+        uint256 amountInMaximum,
+        bytes calldata path
+    ) external onlyOwner returns (uint256 amountIn) {
+        (address tokenOut, address tokenIn, uint24 fee) = decodeFirstPool(path);
 
         bool zeroForOne = tokenIn < tokenOut;
 
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
             address(this),
             zeroForOne,
-            -params.amountOut.toInt256(),
+            -amountOut.toInt256(),
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-            abi.encode(data)
+            path
         );
 
         amountIn = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
-        require(params.amountInMaximum >= amountIn, "Had to withdraw too much");
+        require(amountInMaximum >= amountIn, "Had to withdraw too much");
     }
 
     // increase the margin position - borrow (tokenIn) and sell it against collateral (tokenOut)
     // the user provides the debt amount as input
     function openMarginPositionExactIn(
-    uint256 amountIn,
-    uint256 amountOutMinimum,
-    bytes calldata path
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        bytes calldata path
     ) external onlyOwner returns (uint256 amountOut) {
         (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
 
@@ -155,9 +156,9 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
     // increase the margin position - borrow (tokenIn) and sell it against collateral (tokenOut)
     // the user provides the collateral amount as input
     function openMarginPositionExactOut(
-    uint256 amountOut,
-    uint256 amountInMaximum,
-            bytes calldata path
+        uint256 amountOut,
+        uint256 amountInMaximum,
+        bytes calldata path
     ) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = decodeFirstPool(path);
 
@@ -178,13 +179,11 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
     // ================= Trimming Positions ==========================
     // decrease the margin position - use the collateral (tokenIn) to pay back a borrow (tokenOut)
     function trimMarginPositionExactIn(
-            uint256 amountIn,
-    uint256 amountOutMinimum,
-            bytes calldata path
-
+        uint256 amountIn,
+        uint256 amountOutMinimum,
+        bytes calldata path
     ) external onlyOwner returns (uint256 amountOut) {
         (address tokenIn, address tokenOut, uint24 fee) = decodeFirstPool(path);
-
 
         bool zeroForOne = tokenIn < tokenOut;
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
@@ -201,9 +200,9 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
     }
 
     function trimMarginPositionExactOut(
-                  uint256 amountOut,
-    uint256 amountInMaximum,
-            bytes calldata path
+        uint256 amountOut,
+        uint256 amountInMaximum,
+        bytes calldata path
     ) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = decodeFirstPool(path);
 
