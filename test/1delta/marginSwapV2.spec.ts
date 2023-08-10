@@ -161,10 +161,11 @@ describe('Account based single margin swaps', async () => {
         const path = encodeAggregtorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
-            [8], // action
+            [6], // action
             [0], // pid
-            0 // flag
+            6 // flag
         )
+
         const params = {
             path,
             amountOutMinimum: swapAmount.mul(99).div(100),
@@ -186,7 +187,7 @@ describe('Account based single margin swaps', async () => {
         expect(borrowAmount.toString()).to.equal(swapAmount.toString())
     })
 
-    it('allows margin swap exact out', async () => {
+    it.only('allows margin swap exact out', async () => {
         // enter markets directly
         accountAlice = await createMarginTradingAccountWithV2(alice, accountFixture, true)
         const supplyTokenIndex = 1
@@ -203,8 +204,19 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute.reverse(),
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4], // action
+            [0], // pid
+            6 // flag
+        )
+        // const pair = await accountAlice.pairAddressExt(uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
+        // const val = await accountAlice.getAmountInByPool('450000000000000000000', pair, false)
+        // const val2 = await accountAlice.getAmountInDirect(pair, false, '450000000000000000000')
+        // console.log("TES", val.toString(), val2.toString())
+        // console.log("supp, b", uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
         const params = {
             path,
             amountInMaximum: swapAmount.mul(101).div(100),
@@ -218,7 +230,7 @@ describe('Account based single margin swaps', async () => {
         await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
 
         // execute margin swap
-        await accountAlice.connect(alice).openMarginPositionExactOut(params)
+        await accountAlice.connect(alice).openMarginPositionExactOutV2(params.amountOut, params.amountInMaximum, params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
