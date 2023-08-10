@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity 0.8.21;
+pragma solidity ^0.8.21;
 
 // solhint-disable max-line-length
 
@@ -11,7 +11,6 @@ import {IERC20} from "../../../interfaces/IERC20.sol";
 import {BytesLib} from "../../libraries/BytesLib.sol";
 import {WithStorage} from "../../libraries/LibStorage.sol";
 import {LendingInteractions} from "../../libraries/LendingInteractions.sol";
-import "hardhat/console.sol";
 
 abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, LendingInteractions {
     using BytesLib for bytes;
@@ -56,25 +55,6 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     }
 
-    // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(address tokenA, address tokenB) internal view returns (address pair) {
-        (tokenA, tokenB) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        pair = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            hex"ff",
-                            v2Factory,
-                            keccak256(abi.encodePacked(tokenA, tokenB)),
-                            hex"f2a343db983032be4e17d2d9d614e0dd9a305aed3083e6757c5bb8e2ab607abe" // init code hash
-                        )
-                    )
-                )
-            )
-        );
-    }
-
     function pairAddress(address tokenA, address tokenB) private view returns (address pair) {
         bytes32 ff_uni = FF_UNISWAP_FACTORY;
         assembly {
@@ -115,70 +95,6 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
         }
     }
 
-    function pairAddressExt(address tokenA, address tokenB) public view returns (address pair) {
-        bytes32 ff_uni = FF_UNISWAP_FACTORY;
-        assembly {
-            // There is one contract for every combination of tokens,
-            // which is deployed using CREATE2.
-            // The derivation of this address is given by:
-            //   address(keccak256(abi.encodePacked(
-            //       bytes(0xFF),
-            //       address(UNISWAP_FACTORY_ADDRESS),
-            //       keccak256(abi.encodePacked(
-            //           tokenA < tokenB ? tokenA : tokenB,
-            //           tokenA < tokenB ? tokenB : tokenA,
-            //       )),
-            //       bytes32(UNISWAP_PAIR_INIT_CODE_HASH),
-            //   )));
-
-            // Compute the salt (the hash of the sorted tokens).
-            // Tokens are written in reverse memory order to packed encode
-            // them as two 20-byte values in a 40-byte chunk of memory
-            // starting at 0xB0C.
-            switch lt(tokenA, tokenB)
-            case 0 {
-                mstore(0xB14, tokenA)
-                mstore(0xB00, tokenB)
-            }
-            default {
-                mstore(0xB14, tokenB)
-                mstore(0xB00, tokenA)
-            }
-            let salt := keccak256(0xB0C, 0x28)
-            // Compute the pair address by hashing all the components together.
-
-            mstore(0xB00, ff_uni)
-            mstore(0xB15, salt)
-            mstore(0xB35, CODE_HASH_UNI_V2)
-
-            pair := and(ADDRESS_MASK, keccak256(0xB00, 0x55))
-        }
-    }
-
-    function getAmountInByPool(
-        uint256 amountOut,
-        IUniswapV2Pair pool,
-        bool zeroForOne
-    ) public view returns (uint256 amountIn) {
-        (uint256 reserveIn, uint256 reserveOut, ) = pool.getReserves();
-        (reserveIn, reserveOut) = zeroForOne ? (reserveIn, reserveOut) : (reserveOut, reserveIn);
-        uint256 numerator = reserveIn * amountOut * 1000;
-        uint256 denominator = (reserveOut - amountOut) * 997;
-        amountIn = numerator / denominator + 1;
-    }
-
-    // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
-    function getAmountOut(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) internal pure returns (uint256 amountOut) {
-        uint256 amountInWithFee = amountIn * 997;
-        uint256 numerator = amountInWithFee * reserveOut;
-        uint256 denominator = (reserveIn * 1000) + amountInWithFee;
-        amountOut = numerator / denominator;
-    }
-
     function getAmountOutDirect(
         address pair,
         bool zeroForOne,
@@ -217,17 +133,6 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
                 buyAmount := div(mul(sellAmountWithFee, buyReserve), add(sellAmountWithFee, mul(sellReserve, 1000)))
             }
         }
-    }
-
-    // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
-    function getAmountIn(
-        uint256 amountOut,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) internal pure returns (uint256 amountIn) {
-        uint256 numerator = reserveIn * amountOut * 1000;
-        uint256 denominator = (reserveOut - amountOut) * 997;
-        amountIn = numerator / denominator + 1;
     }
 
     function getAmountInDirect(
@@ -292,7 +197,6 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
                 tokenOut := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
             }
         }
-
         assembly {
             identifier := mload(add(add(data, 0x1), 24)) // identifier for  tradeType
         }
@@ -302,6 +206,49 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
             require(msg.sender == pool);
         }
         cache = data.length;
+        if (tradeId == 1) {
+            cache = data.length;
+            uint256 referenceAmount = zeroForOne ? amount0 : amount1;
+            referenceAmount = getAmountInDirect(pool, zeroForOne, referenceAmount);
+            // either initiate the next swap or pay
+            if (cache > 46) {
+                // amount is now the amount to borrow/withdraw
+                data = skipToken(data);
+                assembly {
+                    tokenOut := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
+                    tokenIn := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
+                }
+                // get next pool
+                _transferERC20Tokens(tokenIn, msg.sender, referenceAmount);
+                pool = pairAddress(tokenIn, tokenOut);
+                // _transferERC20Tokens(tokenIn, pool, referenceAmount);
+                zeroForOne = tokenIn > tokenOut;
+                uint256 amountOut1;
+                // amountOut0, amountOut1
+                (referenceAmount, amountOut1) = zeroForOne ? (referenceAmount, uint256(0)) : (uint256(0), referenceAmount);
+                IUniswapV2Pair(pool).swap(referenceAmount, amountOut1, address(this), data);
+            } else {
+                assembly {
+                    identifier := mload(add(add(data, 0x1), sub(cache, 1))) // identifier for borrow/withdraw
+                }
+                tradeId = identifier;
+
+                if (tradeId == 6) {
+                    tokenIn = cTokenAddress(tokenOut);
+                    // borrow and repay pool
+                    _borrow(tokenIn, referenceAmount);
+                    _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
+                } else {
+                    tokenIn = cTokenAddress(tokenOut);
+                    // withraw and send funds to the pool
+                    _redeemUnderlying(tokenIn, referenceAmount);
+                    _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
+                }
+                // cache amount
+                cs().amount = referenceAmount;
+            }
+            return;
+        }
         if (tradeId > 5) {
             // (address token0, address token1) = sortTokens(tokenIn, tokenOut);
             // the swap amount is expected to be the nonzero output amount
@@ -353,15 +300,21 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
             }
             // amount is now the amount to borrow/withdraw
             referenceAmount = getAmountInDirect(pool, zeroForOne, referenceAmount);
-            if (data.length > 69) {
+            if (cache > 46) {
                 data = skipToken(data);
                 assembly {
                     tokenOut := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
                     tokenIn := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
                 }
-                // amountOut0, amountOut1
-                (referenceAmount, referenceAmount) = zeroForOne ? (referenceAmount, uint256(0)) : (uint256(0), referenceAmount);
-                IUniswapV2Pair(pairAddress(tokenIn, tokenOut)).swap(referenceAmount, referenceAmount, msg.sender, data);
+                // get next pool
+                pool = pairAddress(tokenIn, tokenOut);
+                // _transferERC20Tokens(tokenIn, pool, referenceAmount);
+                zeroForOne = tokenIn > tokenOut;
+                uint256 amountOut0;
+                // amountOut0, cache
+                (amountOut0, cache) = zeroForOne ? (referenceAmount, uint256(0)) : (uint256(0), referenceAmount);
+                IUniswapV2Pair(pool).swap(amountOut0, cache, address(this), data);
+                _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
             } else {
                 // cache amount
                 cs().amount = referenceAmount;
@@ -396,15 +349,10 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
         _transferERC20Tokens(tokenIn, address(pair), amountIn);
         while (true) {
             bool hasMultiplePools = path.length > 69;
-            (address token0, ) = sortTokens(tokenIn, tokenOut);
-            // scope to avoid stack too deep errors
-            {
-                (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pair).getReserves();
-                (uint256 reserveInput, uint256 reserveOutput) = tokenIn == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
-                // calculate next amountIn
-                amountIn = getAmountOut(amountIn, reserveInput, reserveOutput);
-            }
-            (uint256 amount0Out, uint256 amount1Out) = tokenIn == token0 ? (uint256(0), amountIn) : (amountIn, uint256(0));
+            bool zeroForOne = tokenIn < tokenOut;
+            // calculate next amountIn
+            amountIn = getAmountOutDirect(pair, zeroForOne, amountIn);
+            (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (uint256(0), amountIn) : (amountIn, uint256(0));
             address to = hasMultiplePools ? pairAddress(tokenIn, tokenOut) : address(this);
             IUniswapV2Pair(pair).swap(amount0Out, amount1Out, to, new bytes(0));
             // decide whether to continue or terminate
@@ -417,25 +365,6 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
                 break;
             }
         }
-    }
-
-    function swapOnUniV2(
-        uint256 amountIn,
-        address tokenIn,
-        address tokenOut
-    ) private returns (uint256 amountOut) {
-        address pair = pairAddress(tokenIn, tokenOut);
-        _transferERC20Tokens(tokenIn, pair, amountIn);
-        (address token0, ) = sortTokens(tokenIn, tokenOut);
-        // scope to avoid stack too deep errors
-        {
-            (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pair).getReserves();
-            (uint256 reserveInput, uint256 reserveOutput) = tokenIn == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
-            // calculate next amountOut
-            amountOut = getAmountOut(amountIn, reserveInput, reserveOutput);
-        }
-        (uint256 amount0Out, uint256 amount1Out) = tokenIn == token0 ? (uint256(0), amountOut) : (amountOut, uint256(0));
-        IUniswapV2Pair(pair).swap(amount0Out, amount1Out, address(this), new bytes(0));
     }
 
     // increase the margin position - borrow (tokenIn) and sell it against collateral (tokenOut)

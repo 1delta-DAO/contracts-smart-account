@@ -233,4 +233,8 @@ export async function addLiquidityV2(
         overrides
     )
 
+    const pair = await uniswap.factoryV2.getPair(tokenAddressA, tokenAddressB)
+
+    console.log("Pool", pair)
+
 }
