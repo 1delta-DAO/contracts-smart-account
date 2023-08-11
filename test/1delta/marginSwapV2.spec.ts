@@ -141,6 +141,16 @@ describe('Account based single margin swaps', async () => {
             uniswapV2
         )
 
+        await addLiquidityV2(
+            deployer,
+            uniswap.tokens[3].address,
+            uniswap.tokens[4].address,
+            expandTo18Decimals(1_000_000),
+            expandTo18Decimals(1_000_000),
+            uniswapV2
+        )
+
+
         const poolAddress = await uniswap.factory.getPool(uniswap.tokens[1].address, uniswap.tokens[0].address, FeeAmount.MEDIUM)
 
         // add pool
@@ -243,6 +253,54 @@ describe('Account based single margin swaps', async () => {
         expect(borrowAmount.toString()).to.equal(swapAmount.toString())
     })
 
+    it.only('allows margin swap exact in multi 3-hop', async () => {
+        // enter markets directly
+        accountAlice = await createMarginTradingAccountWithV2(alice, accountFixture, true)
+
+        const supplyTokenIndex = 3
+        const borrowTokenIndex = 0
+        const providedAmount = expandTo18Decimals(500)
+
+        // enter market
+        await enterMarkets(alice, accountAlice.address, compound)
+
+        await network.provider.send("evm_increaseTime", [3600])
+        await network.provider.send("evm_mine")
+
+        const swapAmount = expandTo18Decimals(450)
+
+        const routeIndexes = [borrowTokenIndex, 1, 2, supplyTokenIndex]
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [6, 0, 0], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
+
+        const params = {
+            path,
+            amountOutMinimum: swapAmount.mul(95).div(100),
+            amountIn: swapAmount,
+        }
+
+        await uniswap.tokens[supplyTokenIndex].connect(alice).approve(accountAlice.address, constants.MaxUint256)
+
+        const accountMM = await getMoneyMarketAccount(alice, accountAlice.address)
+        await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
+
+        console.log("Open multi")
+        // execute margin swap
+        await accountAlice.connect(alice).openMarginPositionExactInV2(params.amountIn, params.amountOutMinimum, params.path)
+
+        const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
+        const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
+
+        expect(borrowAmount.toString()).to.equal(swapAmount.toString())
+    })
+
+
     it.only('allows margin swap exact out', async () => {
         // enter markets directly
         accountAlice = await createMarginTradingAccountWithV2(alice, accountFixture, true)
@@ -311,7 +369,7 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, 1, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        console.log("_tokensInRoute",_tokensInRoute)
+        console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
         const path = encodeAggregtorPathEthers(
             _tokensInRoute.reverse(),
@@ -346,7 +404,57 @@ describe('Account based single margin swaps', async () => {
         expect(supply0.toString()).to.equal(providedAmount.add(swapAmount).toString())
     })
 
+    it.only('allows margin swap exact out multi 3-hop', async () => {
+        // enter markets directly
+        accountAlice = await createMarginTradingAccountWithV2(alice, accountFixture, true)
+        const supplyTokenIndex = 3
+        const borrowTokenIndex = 0
+        const providedAmount = expandTo18Decimals(500)
 
+        // enter market
+        await enterMarkets(alice, accountAlice.address, compound)
+
+        await network.provider.send("evm_increaseTime", [3600])
+        await network.provider.send("evm_mine")
+
+        const swapAmount = expandTo18Decimals(450)
+
+        const routeIndexes = [borrowTokenIndex, 1, 2, supplyTokenIndex]
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
+        console.log("_tokensInRoute", _tokensInRoute)
+        // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute.reverse(),
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [4, 1, 1], // action
+            [0, 0, 0], // pid
+            6 // flag
+        )
+        // const pair = await accountAlice.pairAddressExt(uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
+        // const val = await accountAlice.getAmountInByPool('450000000000000000000', pair, false)
+        // const val2 = await accountAlice.getAmountInDirect(pair, false, '450000000000000000000')
+        // console.log("TES", val.toString(), val2.toString())
+        // console.log("supp, b", uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
+        const params = {
+            path,
+            amountInMaximum: swapAmount.mul(102).div(100),
+            amountOut: swapAmount,
+        }
+
+
+        await uniswap.tokens[supplyTokenIndex].connect(alice).approve(accountAlice.address, constants.MaxUint256)
+
+        const accountMM = await getMoneyMarketAccount(alice, accountAlice.address)
+        await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
+
+        // execute margin swap
+        await accountAlice.connect(alice).openMarginPositionExactOutV2(params.amountOut, params.amountInMaximum, params.path)
+
+        const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
+        const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
+
+        expect(supply0.toString()).to.equal(providedAmount.add(swapAmount).toString())
+    })
 
     it('allows margin trim exact in', async () => {
         // enter markets directly

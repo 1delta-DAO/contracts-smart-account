@@ -50,11 +50,6 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
         }
     }
 
-    // returns sorted token addresses, used to handle return values from pairs sorted in this order
-    function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
-        (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-    }
-
     function pairAddress(address tokenA, address tokenB) private view returns (address pair) {
         bytes32 ff_uni = FF_UNISWAP_FACTORY;
         assembly {
@@ -212,21 +207,20 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
             referenceAmount = getAmountInDirect(pool, zeroForOne, referenceAmount);
             // either initiate the next swap or pay
             if (cache > 46) {
-                // amount is now the amount to borrow/withdraw
                 data = skipToken(data);
                 assembly {
                     tokenOut := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
                     tokenIn := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
                 }
                 // get next pool
-                _transferERC20Tokens(tokenIn, msg.sender, referenceAmount);
                 pool = pairAddress(tokenIn, tokenOut);
                 // _transferERC20Tokens(tokenIn, pool, referenceAmount);
                 zeroForOne = tokenIn > tokenOut;
-                uint256 amountOut1;
-                // amountOut0, amountOut1
-                (referenceAmount, amountOut1) = zeroForOne ? (referenceAmount, uint256(0)) : (uint256(0), referenceAmount);
-                IUniswapV2Pair(pool).swap(referenceAmount, amountOut1, address(this), data);
+                uint256 amountOut0;
+                // amountOut0, cache
+                (amountOut0, cache) = zeroForOne ? (referenceAmount, uint256(0)) : (uint256(0), referenceAmount);
+                IUniswapV2Pair(pool).swap(amountOut0, cache, address(this), data);
+                _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
             } else {
                 assembly {
                     identifier := mload(add(add(data, 0x1), sub(cache, 1))) // identifier for borrow/withdraw
@@ -340,26 +334,25 @@ abstract contract BaseUniswapV2CallbackModule is TokenTransfer, WithStorage, Len
     // requires the initial amount to have already been sent to the first pair
     function exactInputToSelf(uint256 amountIn, bytes memory path) internal returns (uint256 amountOut) {
         address tokenIn;
-        address tokenOut;
-        assembly {
-            tokenIn := div(mload(add(add(path, 0x20), 0)), 0x1000000000000000000000000)
-            tokenOut := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
-        }
-        address pair = pairAddress(tokenIn, tokenOut);
-        _transferERC20Tokens(tokenIn, address(pair), amountIn);
+
         while (true) {
-            bool hasMultiplePools = path.length > 69;
+            address tokenOut;
+            assembly {
+                tokenIn := div(mload(add(add(path, 0x20), 0)), 0x1000000000000000000000000)
+                tokenOut := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
+            }
+            address pair = pairAddress(tokenIn, tokenOut);
+            bool hasMultiplePools = path.length > 46;
             bool zeroForOne = tokenIn < tokenOut;
+            // send funds to pair
+            _transferERC20Tokens(tokenIn, pair, amountIn);
             // calculate next amountIn
             amountIn = getAmountOutDirect(pair, zeroForOne, amountIn);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (uint256(0), amountIn) : (amountIn, uint256(0));
-            address to = hasMultiplePools ? pairAddress(tokenIn, tokenOut) : address(this);
-            IUniswapV2Pair(pair).swap(amount0Out, amount1Out, to, new bytes(0));
+            IUniswapV2Pair(pair).swap(amount0Out, amount1Out, address(this), new bytes(0));
             // decide whether to continue or terminate
             if (hasMultiplePools) {
                 path = skipToken(path);
-                // update pair
-                pair = to;
             } else {
                 amountOut = amountIn;
                 break;
