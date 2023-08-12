@@ -3,12 +3,11 @@
 pragma solidity ^0.8.21;
 
 import {
-    MarginCallbackData,
-    AllInputMultiParamsBase,
-    MinimalExactInputMultiParams,
-    AllOutputMultiParamsBase,
-    AllInputMultiParamsBaseWithRecipient
-    } from "../../dataTypes/InputTypes.sol";
+    MarginCallbackData, 
+    AllInputMultiParamsBase, 
+    MinimalExactInputMultiParams, 
+    AllOutputMultiParamsBase, 
+    AllInputMultiParamsBaseWithRecipient} from "../../dataTypes/InputTypes.sol";
 import {INativeWrapper} from "../../interfaces/INativeWrapper.sol";
 import {IUniswapV3Pool} from "../../../external-protocols/uniswapV3/core/interfaces/IUniswapV3Pool.sol";
 import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
@@ -21,7 +20,6 @@ import "../../../external-protocols/uniswapV3/core/interfaces/callback/IUniswapV
 import {WithStorage, LibStorage} from "../../libraries/LibStorage.sol";
 import "../../interfaces/IDataProvider.sol";
 import "../../../periphery-standalone/interfaces/IMinimalSwapRouter.sol";
-import {UniswapDataHolder} from "../utils/UniswapDataHolder.sol";
 import "./BaseLendingHandler.sol";
 import {BaseSwapper} from "./BaseSwapper.sol";
 
@@ -33,28 +31,27 @@ import {BaseSwapper} from "./BaseSwapper.sol";
  * This cannot always work in swap scenarios with withdrawals, however, for repaying debt, the methods are consistent.
  * @author Achthar
  */
-abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, UniswapDataHolder, TokenTransfer, BaseSwapper {
+abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, TokenTransfer, BaseSwapper {
     using Path for bytes;
     using SafeCast for uint256;
 
     uint256 private constant DEFAULT_AMOUNT_CACHED = type(uint256).max;
     address private constant DEFAULT_ADDRESS_CACHED = address(0);
 
-    /// @dev MIN_SQRT_RATIO + 1 from Uniswap's TickMath
-    uint160 private immutable MIN_SQRT_RATIO = 4295128740;
-    /// @dev MAX_SQRT_RATIO - 1 from Uniswap's TickMath
-    uint160 private immutable MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970341;
-
     modifier onlyOwner() {
         LibStorage.enforceAccountOwner();
         _;
     }
+    address immutable router;
 
     constructor(
-        address _factory,
+        address _uniFactoryV2,
+        address _uniFactoryV3,
         address _nativeWrapper,
         address _router
-    ) BaseLendingHandler(_nativeWrapper) UniswapDataHolder(_factory, _router) BaseSwapper(_factory) {}
+    ) BaseLendingHandler(_nativeWrapper) BaseSwapper(_uniFactoryV2, _uniFactoryV3) {
+        router = _router;
+    }
 
     // money market functions
 

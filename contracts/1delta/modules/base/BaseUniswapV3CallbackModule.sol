@@ -11,7 +11,6 @@ import {PoolAddressCalculator} from "../../dex-tools/uniswap/libraries/PoolAddre
 import {IUniswapV3SwapCallback} from "../../dex-tools/uniswap/core/IUniswapV3SwapCallback.sol";
 import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
 import {WithStorage} from "../../libraries/LibStorage.sol";
-import {UniswapDataHolder} from "../utils/UniswapDataHolder.sol";
 import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
 import {LendingInteractions} from "../../libraries/LendingInteractions.sol";
 import {BaseSwapper} from "./BaseSwapper.sol";
@@ -22,26 +21,15 @@ import {BaseSwapper} from "./BaseSwapper.sol";
  * @title Uniswap Callback Base contract
  * @notice Contains main logic for uniswap callbacks
  */
-abstract contract BaseUniswapV3CallbackModule is
-    IUniswapV3SwapCallback,
-    WithStorage,
-    UniswapDataHolder,
-    TokenTransfer,
-    LendingInteractions,
-    BaseSwapper
-{
+abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, TokenTransfer, LendingInteractions, BaseSwapper {
     using SafeCast for uint256;
 
-    /// @dev MIN_SQRT_RATIO + 1 from Uniswap's TickMath
-    uint160 private immutable MIN_SQRT_RATIO = 4295128740;
-    /// @dev MAX_SQRT_RATIO - 1 from Uniswap's TickMath
-    uint160 private immutable MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970341;
-
     constructor(
-        address _factory,
+        address _factoryV2,
+        address _factoryV3,
         address _nativeWrapper,
         address _cNative
-    ) UniswapDataHolder(_factory, _cNative) LendingInteractions(_cNative, _nativeWrapper) BaseSwapper(_factory) {}
+    ) LendingInteractions(_cNative, _nativeWrapper) BaseSwapper(_factoryV2, _factoryV3) {}
 
     // path identification
     // 0: exact input swap
@@ -89,17 +77,7 @@ abstract contract BaseUniswapV3CallbackModule is
             // either initiate the next swap or pay
             if (cache > 46) {
                 _data = skipToken(_data);
-                (tokenOut, tokenIn, fee) = decodeFirstPool(_data);
-
-                bool zeroForOne = tokenIn < tokenOut;
-
-                getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
-                    msg.sender,
-                    zeroForOne,
-                    -amountToPay.toInt256(),
-                    zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-                    _data
-                );
+                flashSwapExactOut(amountToPay, _data);
             } else {
                 assembly {
                     identifier := mload(add(add(_data, 0x1), sub(cache, 1))) // identifier for borrow/withdraw
@@ -136,7 +114,7 @@ abstract contract BaseUniswapV3CallbackModule is
                     // we need to swap to the token that we want to supply
                     // the router returns the amount that we can finally supply to the protocol
                     _data = skipToken(_data);
-                    amountToSwap = exactInputToSelf(amountToSwap, _data);
+                    amountToSwap = swapExactIn(amountToSwap, _data);
                     // supply directly
                     tokenOut = getLastToken(_data);
                     // update length
@@ -182,17 +160,7 @@ abstract contract BaseUniswapV3CallbackModule is
                 // multihop if required
                 if (cache > 46) {
                     _data = skipToken(_data);
-                    (tokenOut, tokenIn, fee) = decodeFirstPool(_data);
-
-                    bool zeroForOne = tokenIn < tokenOut;
-
-                    getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
-                        msg.sender,
-                        zeroForOne,
-                        -amountInLastPool.toInt256(),
-                        zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-                        _data
-                    );
+                    flashSwapExactOut(amountInLastPool, _data);
                 } else {
                     // cache amount
                     cs().amount = amountInLastPool;

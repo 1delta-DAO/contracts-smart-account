@@ -76,7 +76,7 @@ export interface AccountFactoryFixtureWithV2 {
     v2module: UniswapV2CallbackModule
 }
 
-export async function accountFactoryFixture(signer: SignerWithAddress, factory: UniswapV3Factory, weth: IWETH9, cNative: string): Promise<AccountFactoryFixture> {
+export async function accountFactoryFixture(signer: SignerWithAddress, factory: UniswapV3Factory, weth: IWETH9, cNative: string, factoryV2: string): Promise<AccountFactoryFixture> {
     let diamondDeployer: OneDeltaAccountFactory
     let moduleManager: OneDeltaModuleManager
     let moneyMarketModule: MoneyMarketModule
@@ -91,10 +91,10 @@ export async function accountFactoryFixture(signer: SignerWithAddress, factory: 
     moduleManager = await new OneDeltaModuleManager__factory(signer).deploy()
     accountInit = await new AccountInit__factory(signer).deploy()
     delegatorModule = await new DelegatorModule__factory(signer).deploy()
-    marginTraderModule = await new MarginTraderModule__factory(signer).deploy(factory.address)
+    marginTraderModule = await new MarginTraderModule__factory(signer).deploy(factoryV2, factory.address)
     minimalRouter = await new MinimalSwapRouter__factory(signer).deploy(factory.address, weth.address)
     moneyMarketModule = await new MoneyMarketModule__factory(signer).deploy(factory.address, weth.address, minimalRouter.address)
-    SweeperModule = await new SweeperModule__factory(signer).deploy(factory.address, weth.address, minimalRouter.address)
+    SweeperModule = await new SweeperModule__factory(signer).deploy(factoryV2, factory.address, weth.address, minimalRouter.address)
 
     await moduleManager.connect(signer).configureModules(
         [{
@@ -138,7 +138,7 @@ export async function accountFactoryFixture(signer: SignerWithAddress, factory: 
 
     if (factory && weth) {
 
-        callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factory.address, weth.address, cNative)
+        callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factoryV2, factory.address, weth.address, cNative)
 
         // add uniswap callback
         await moduleManager.connect(signer).configureModules(
@@ -240,7 +240,7 @@ export interface UniswapAccountFactoryFixture {
     delegatorModule: DelegatorModule
 }
 
-export async function uniswapAccountFactoryFixture(signer: SignerWithAddress, weth: IWETH9, factory: UniswapV3Factory, cNative: string): Promise<UniswapAccountFactoryFixture> {
+export async function uniswapAccountFactoryFixture(signer: SignerWithAddress, weth: IWETH9, factory: UniswapV3Factory, cNative: string, factoryV2: string): Promise<UniswapAccountFactoryFixture> {
     let diamondDeployer: OneDeltaAccountFactory
     let moduleManager: OneDeltaModuleManager
     let dataProvider: DataProvider
@@ -253,7 +253,7 @@ export async function uniswapAccountFactoryFixture(signer: SignerWithAddress, we
     delegatorModule = await new DelegatorModule__factory(signer).deploy()
 
     minimalRouter = await new MinimalSwapRouter__factory(signer).deploy(factory.address, weth.address)
-    callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factory.address, weth.address, cNative)
+    callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factoryV2, factory.address, weth.address, cNative)
 
     // add initializer
     await moduleManager.configureModules(
@@ -426,7 +426,7 @@ export async function deployModuleManager(signer: SignerWithAddress): Promise<On
 
 
 
-export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, factory: UniswapV3Factory, weth: IWETH9, cNative: string, uniV2Factory: string): Promise<AccountFactoryFixtureWithV2> {
+export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, uniV3factory: UniswapV3Factory, weth: IWETH9, cNative: string, uniV2Factory: string): Promise<AccountFactoryFixtureWithV2> {
     let diamondDeployer: OneDeltaAccountFactory
     let moduleManager: OneDeltaModuleManager
     let moneyMarketModule: MoneyMarketModule
@@ -442,11 +442,12 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, fac
     moduleManager = await new OneDeltaModuleManager__factory(signer).deploy()
     accountInit = await new AccountInit__factory(signer).deploy()
     delegatorModule = await new DelegatorModule__factory(signer).deploy()
-    marginTraderModule = await new MarginTraderModule__factory(signer).deploy(factory.address)
-    minimalRouter = await new MinimalSwapRouter__factory(signer).deploy(factory.address, weth.address)
-    moneyMarketModule = await new MoneyMarketModule__factory(signer).deploy(factory.address, weth.address, minimalRouter.address)
-    SweeperModule = await new SweeperModule__factory(signer).deploy(factory.address, weth.address, minimalRouter.address)
-    v2module = await new UniswapV2CallbackModule__factory(signer).deploy(uniV2Factory, weth.address, cNative)
+    marginTraderModule = await new MarginTraderModule__factory(signer).deploy(uniV2Factory, uniV3factory.address)
+    minimalRouter = await new MinimalSwapRouter__factory(signer).deploy(uniV3factory.address, weth.address)
+    moneyMarketModule = await new MoneyMarketModule__factory(signer).deploy(uniV3factory.address, weth.address, minimalRouter.address)
+    SweeperModule = await new SweeperModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, minimalRouter.address)
+    v2module = await new UniswapV2CallbackModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
+    callbackModule = await new UniswapCallbackModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
 
     await moduleManager.connect(signer).configureModules(
         [{
@@ -487,21 +488,15 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, fac
         }]
     )
 
+    // add uniswap callback
+    await moduleManager.connect(signer).configureModules(
+        [{
+            moduleAddress: callbackModule.address,
+            action: ModuleConfigAction.Add,
+            functionSelectors: getSelectors(callbackModule)
+        }]
+    )
 
-    if (factory && weth) {
-
-        callbackModule = await new UniswapCallbackModule__factory(signer).deploy(factory.address, weth.address, cNative)
-
-        // add uniswap callback
-        await moduleManager.connect(signer).configureModules(
-            [{
-                moduleAddress: callbackModule.address,
-                action: ModuleConfigAction.Add,
-                functionSelectors: getSelectors(callbackModule)
-            }]
-        )
-        console.log("Uniswap modules added")
-    }
 
     await moduleManager.connect(signer).configureModules(
         [{

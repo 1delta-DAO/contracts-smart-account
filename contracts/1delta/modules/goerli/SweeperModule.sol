@@ -17,7 +17,7 @@ contract SweeperModuleGoerli is CoreSweeperModule, GoerliCompoundCTokenData {
         address _factory,
         address _nativeWrapper,
         address _router
-    ) CoreSweeperModule(_factory, _nativeWrapper, _router) GoerliCompoundCTokenData() {}
+    ) CoreSweeperModule(address(0), _factory, _nativeWrapper, _router) GoerliCompoundCTokenData() {}
 
     function cToken(address underlying) internal view override returns (ICompoundTypeCERC20) {
         return _cToken(underlying);

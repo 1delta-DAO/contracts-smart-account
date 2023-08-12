@@ -54,11 +54,6 @@ describe('Margin Multi Swap operations', async () => {
 
         uniswap = await uniswapFixture(deployer, 5)
 
-
-
-
-
-
         opts = {
             underlyings: uniswap.tokens,
             collateralFactors: uniswap.tokens.map(x => ONE_18.mul(7).div(10)),
@@ -117,7 +112,7 @@ describe('Margin Multi Swap operations', async () => {
 
         compound = await generateCompoundFixture(deployer, opts)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address, uniswap.factory.address)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
         await accountFixture.dataProvider.setCEther(compound.cEther.address)
@@ -246,7 +241,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         await uniswap.tokens[supplyIndex].connect(alice).approve(accountAlice.address, constants.MaxUint256)
@@ -294,7 +289,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         await uniswap.tokens[supplyIndex].connect(bob).approve(accountBob.address, constants.MaxUint256)
@@ -340,7 +335,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         await uniswap.tokens[supplyIndex].connect(achi).approve(accountAchi.address, constants.MaxUint256)
@@ -367,7 +362,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             7 // flag
         )
 
@@ -406,7 +401,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         await uniswap.tokens[supplyIndex].connect(gabi).approve(accountGabi.address, constants.MaxUint256)
@@ -434,7 +429,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1,], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             3 // flag
         )
 
@@ -473,7 +468,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         await uniswap.tokens[supplyIndex].connect(alice).approve(accountAlice.address, constants.MaxUint256)
@@ -519,7 +514,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         await uniswap.tokens[supplyIndex].connect(bob).approve(accountBob.address, constants.MaxUint256)
@@ -565,7 +560,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0,], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         const params = {
@@ -610,7 +605,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         const params = {
@@ -654,7 +649,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         const params = {
@@ -677,7 +672,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             7 // flag
         )
 
@@ -718,7 +713,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             6 // flag
         )
         const params = {
@@ -740,7 +735,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             7 // flag
         )
         const repayIn = expandTo18Decimals(1)
@@ -793,7 +788,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1,], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             3 // flag
         )
         const paramsTrim = {
@@ -843,7 +838,7 @@ describe('Margin Multi Swap operations', async () => {
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action
-            [0, 0, 0], // pid
+            [1, 1, 1], // pid
             7 // flag
         )
 

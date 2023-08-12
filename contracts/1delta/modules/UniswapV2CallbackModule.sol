@@ -13,12 +13,12 @@ import {IDataProvider} from "../interfaces/IDataProvider.sol";
 
 /// @title Module for Uniswap callbacks
 contract UniswapV2CallbackModule is BaseUniswapV2CallbackModule {
-
     constructor(
-        address _factory,
+        address _factoryV2,
+        address _factoryV3,
         address _nativeWrapper,
         address _cNative
-    ) BaseUniswapV2CallbackModule(_factory, _nativeWrapper, _cNative) {}
+    ) BaseUniswapV2CallbackModule(_factoryV2, _factoryV3, _nativeWrapper, _cNative) {}
 
     function cTokenPair(address underlying, address underlyingOther) internal view override returns (address, address) {
         return IDataProvider(ps().dataProvider).cTokenPair(underlying, underlyingOther);

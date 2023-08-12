@@ -91,7 +91,7 @@ describe('Account based single margin swaps', async () => {
 
         compound = await generateCompoundFixture(deployer, opts)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address, uniswap.factory.address)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
         await accountFixture.dataProvider.setNativeWrapper(uniswap.weth9.address)

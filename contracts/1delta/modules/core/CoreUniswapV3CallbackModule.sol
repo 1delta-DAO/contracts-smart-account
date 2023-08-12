@@ -17,10 +17,11 @@ import {LendingHandler} from "./LendingHandler.sol";
  */
 abstract contract CoreUniswapV3CallbackModule is BaseUniswapV3CallbackModule, LendingHandler {
     constructor(
-        address _factory,
+        address _uniFactoryV2,
+        address _uniFactoryV3,
         address _weth,
         address _router
-    ) BaseUniswapV3CallbackModule(_factory, _weth, _router) LendingHandler(_weth) {}
+    ) BaseUniswapV3CallbackModule(_uniFactoryV2, _uniFactoryV3, _weth, _router) LendingHandler(_weth) {}
 
     function mintPrivate(address token, uint256 valueToDeposit) internal override(LendingHandler) {
         super.mintPrivate(token, valueToDeposit);

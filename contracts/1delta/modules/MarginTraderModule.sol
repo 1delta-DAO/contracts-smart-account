@@ -24,21 +24,12 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
 
     uint256 private constant DEFAULT_AMOUNT_CACHED = type(uint256).max;
 
-    address internal immutable v3Factory;
-
-    /// @dev MIN_SQRT_RATIO + 1 from Uniswap's TickMath
-    uint160 private immutable MIN_SQRT_RATIO = 4295128740;
-    /// @dev MAX_SQRT_RATIO - 1 from Uniswap's TickMath
-    uint160 private immutable MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970341;
-
     modifier onlyOwner() {
         LibStorage.enforceAccountOwner();
         _;
     }
 
-    constructor(address _factory) BaseSwapper(_factory) {
-        v3Factory = _factory;
-    }
+    constructor(address _factoryV2, address _factoryV3) BaseSwapper(_factoryV2, _factoryV3) {}
 
     function swapBorrowExactIn(
         uint256 amountIn,

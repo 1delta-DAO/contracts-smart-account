@@ -15,10 +15,11 @@ import {LendingHandler} from "./LendingHandler.sol";
  */
 abstract contract CoreSweeperModule is LendingHandler, BaseSweeperModule {
     constructor(
-        address _factory,
+        address _uniFactoryV2,
+        address _uniFactoryV3,
         address _nativeWrapper,
         address _router
-    ) BaseSweeperModule(_factory, _nativeWrapper, _router) LendingHandler(_nativeWrapper) {}
+    ) BaseSweeperModule(_uniFactoryV2, _uniFactoryV3, _nativeWrapper, _router) LendingHandler(_nativeWrapper) {}
 
     function mintPrivate(address token, uint256 valueToDeposit) internal override(LendingHandler, BaseLendingHandler) {
         super.mintPrivate(token, valueToDeposit);

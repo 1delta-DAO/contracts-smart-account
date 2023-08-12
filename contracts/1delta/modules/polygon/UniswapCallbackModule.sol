@@ -19,7 +19,7 @@ contract UniswapCallbackModulePolygon is OTokenData, CoreUniswapV3CallbackModule
         address _factory,
         address _weth,
         address _router
-    ) CoreUniswapV3CallbackModule(_factory, _weth, _router) OTokenData() {}
+    ) CoreUniswapV3CallbackModule(address(0), _factory, _weth, _router) OTokenData() {}
 
     function cToken(address underlying) internal view override returns (ICompoundTypeCERC20) {
         return _cToken(underlying);

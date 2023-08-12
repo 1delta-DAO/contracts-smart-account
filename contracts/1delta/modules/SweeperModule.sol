@@ -9,6 +9,7 @@ import {ICompoundTypeCToken} from "../interfaces/compound/ICompoundTypeCToken.so
 import "./base/BaseSweeperModule.sol";
 import {CompoundHandler} from "./utils/CompoundHandler.sol";
 import {BaseSwapper} from "./base/BaseSwapper.sol";
+
 // solhint-disable max-line-length
 
 /**
@@ -18,10 +19,11 @@ import {BaseSwapper} from "./base/BaseSwapper.sol";
  */
 contract SweeperModule is CompoundHandler, BaseSweeperModule {
     constructor(
-        address _factory,
+        address _factoryV2,
+        address _factoryV3,
         address _weth,
         address _router
-    ) BaseSweeperModule(_factory, _weth, _router) CompoundHandler(_weth) {}
+    ) BaseSweeperModule(_factoryV2, _factoryV3, _weth, _router) CompoundHandler(_weth) {}
 
     function mintPrivate(address token, uint256 valueToDeposit) internal override(CompoundHandler, BaseLendingHandler) {
         super.mintPrivate(token, valueToDeposit);

@@ -8,6 +8,7 @@ pragma solidity 0.8.21;
 
 import {SafeCast} from "../../dex-tools/uniswap/core/SafeCast.sol";
 import {IUniswapV3Pool} from "../../dex-tools/uniswap/core/IUniswapV3Pool.sol";
+import {IUniswapV2Pair} from "../../../external-protocols/uniswapV2/core/interfaces/IUniswapV2Pair.sol";
 import {ISwapRouter} from "../../dex-tools/uniswap/interfaces/ISwapRouter.sol";
 import {PeripheryValidation} from "../../dex-tools/uniswap/base/PeripheryValidation.sol";
 import {PeripheryPaymentsWithFee} from "../../dex-tools/uniswap/base/PeripheryPaymentsWithFee.sol";
@@ -35,14 +36,27 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
     uint256 private constant UINT24_MASK = 0xffffff;
 
     /// @dev MIN_SQRT_RATIO + 1 from Uniswap's TickMath
-    uint160 private immutable MIN_SQRT_RATIO = 4295128740;
+    uint160 internal immutable MIN_SQRT_RATIO = 4295128740;
     /// @dev MAX_SQRT_RATIO - 1 from Uniswap's TickMath
-    uint160 private immutable MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970341;
+    uint160 internal immutable MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970341;
 
     address private immutable uniswapV3Factory;
 
     bytes32 private immutable UNI_FF_FACTORY_ADDRESS;
-    bytes32 private immutable UNI_POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
+    bytes32 private constant UNI_POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
+
+    bytes32 private constant CODE_HASH_UNI_V2 = 0xf2a343db983032be4e17d2d9d614e0dd9a305aed3083e6757c5bb8e2ab607abe;
+    uint256 private constant ADDRESS_MASK_LOWER = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+
+    bytes32 private immutable FF_UNISWAP_FACTORY;
+
+    constructor(address _factoryV2, address _factoryV3) {
+        // V3 factory
+        uniswapV3Factory = _factoryV3;
+        UNI_FF_FACTORY_ADDRESS = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factoryV3)) << 88));
+        // v2 factory
+        FF_UNISWAP_FACTORY = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factoryV2)) << 88));
+    }
 
     /// @dev Returns the pool for the given token pair and fee. The pool contract may or may not exist.
     function getUniswapV3Pool(
@@ -51,7 +65,6 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         uint24 fee
     ) internal view returns (IUniswapV3Pool pool) {
         bytes32 ffFactoryAddress = UNI_FF_FACTORY_ADDRESS;
-        bytes32 poolInitCodeHash = UNI_POOL_INIT_CODE_HASH;
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         assembly {
             let s := mload(0x40)
@@ -64,14 +77,30 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             mstore(add(p, 64), and(UINT24_MASK, fee))
             mstore(p, keccak256(p, 96))
             p := add(p, 32)
-            mstore(p, poolInitCodeHash)
+            mstore(p, UNI_POOL_INIT_CODE_HASH)
             pool := and(ADDRESS_MASK, keccak256(s, 85))
         }
     }
 
-    constructor(address _factory) {
-        uniswapV3Factory = _factory;
-        UNI_FF_FACTORY_ADDRESS = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factory)) << 88));
+    function pairAddress(address tokenA, address tokenB) internal view returns (address pair) {
+        bytes32 ff_uni = FF_UNISWAP_FACTORY;
+        assembly {
+            switch lt(tokenA, tokenB)
+            case 0 {
+                mstore(0xB14, tokenA)
+                mstore(0xB00, tokenB)
+            }
+            default {
+                mstore(0xB14, tokenB)
+                mstore(0xB00, tokenA)
+            }
+            let salt := keccak256(0xB0C, 0x28)
+            mstore(0xB00, ff_uni)
+            mstore(0xB15, salt)
+            mstore(0xB35, CODE_HASH_UNI_V2)
+
+            pair := and(ADDRESS_MASK, keccak256(0xB00, 0x55))
+        }
     }
 
     function exactInputToSelf(uint256 amountIn, bytes memory _data) internal returns (uint256 amountOut) {
@@ -108,32 +137,256 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         }
     }
 
+    // swaps exact input through UniswapV3 or UniswapV2 style exactIn
+    function swapExactIn(uint256 amountIn, bytes memory path) internal returns (uint256 amountOut) {
+        while (true) {
+            address tokenIn;
+            address tokenOut;
+            uint8 identifier;
+            assembly {
+                tokenIn := div(mload(add(add(path, 0x20), 0)), 0x1000000000000000000000000)
+                identifier := mload(add(add(path, 0x1), 23)) // identifier for poolId
+                tokenOut := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
+            }
+            // uniswapV2 style
+            if (identifier == 0) {
+                amountIn = swapUniV2ExactIn(tokenIn, tokenOut, amountIn);
+            }
+            // uniswapV3 style
+            else if (identifier == 1) {
+                uint24 fee;
+                assembly {
+                    fee := mload(add(add(path, 0x3), 20))
+                }
+                bool zeroForOne = tokenIn < tokenOut;
+                (int256 amount0, int256 amount1) = getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+                    address(this),
+                    zeroForOne,
+                    int256(amountIn),
+                    zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
+                    sliceFirstPool(path)
+                );
+
+                amountIn = uint256(-(zeroForOne ? amount1 : amount0));
+            }
+            // decide whether to continue or terminate
+            if (path.length > 46) {
+                path = skipToken(path);
+            } else {
+                amountOut = amountIn;
+                break;
+            }
+        }
+    }
+
+    // simple exact input swap using uniswapV2 or fork
+    function swapUniV2ExactIn(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) private returns (uint256 buyAmount) {
+        bytes32 ff_uni = FF_UNISWAP_FACTORY;
+        assembly {
+            let zeroForOne := lt(tokenIn, tokenOut)
+            switch zeroForOne
+            case 0 {
+                mstore(0xB14, tokenIn)
+                mstore(0xB00, tokenOut)
+            }
+            default {
+                mstore(0xB14, tokenOut)
+                mstore(0xB00, tokenIn)
+            }
+            let salt := keccak256(0xB0C, 0x28)
+            mstore(0xB00, ff_uni)
+            mstore(0xB15, salt)
+            mstore(0xB35, CODE_HASH_UNI_V2)
+
+            let pair := and(ADDRESS_MASK_LOWER, keccak256(0xB00, 0x55))
+
+            // EXECUTE TRANSFER
+            let ptr := mload(0x40) // free memory pointer
+            // selector for transfer(address,uint256)
+            mstore(ptr, 0xa9059cbb00000000000000000000000000000000000000000000000000000000)
+            mstore(add(ptr, 0x04), and(pair, ADDRESS_MASK_LOWER))
+            mstore(add(ptr, 0x24), amountIn)
+
+            let success := call(gas(), and(tokenIn, ADDRESS_MASK_LOWER), 0, ptr, 0x44, ptr, 32)
+
+            let rdsize := returndatasize()
+
+            // Check for ERC20 success. ERC20 tokens should return a boolean,
+            // but some don't. We accept 0-length return data as success, or at
+            // least 32 bytes that starts with a 32-byte boolean true.
+            success := and(
+                success, // call itself succeeded
+                or(
+                    iszero(rdsize), // no return data, or
+                    and(
+                        iszero(lt(rdsize, 32)), // at least 32 bytes
+                        eq(mload(ptr), 1) // starts with uint256(1)
+                    )
+                )
+            )
+
+            if iszero(success) {
+                returndatacopy(ptr, 0, rdsize)
+                revert(ptr, rdsize)
+            }
+            // TRANSFER COMPLETE
+
+            // Call pair.getReserves(), store the results at `0xC00`
+            mstore(0xB00, 0x0902f1ac00000000000000000000000000000000000000000000000000000000)
+            if iszero(staticcall(gas(), pair, 0xB00, 0x4, 0xC00, 0x40)) {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+            // Revert if the pair contract does not return at least two words.
+            if lt(returndatasize(), 0x40) {
+                revert(0, 0)
+            }
+
+            // Compute the buy amount based on the pair reserves.
+            {
+                let sellReserve
+                let buyReserve
+                switch iszero(zeroForOne)
+                case 0 {
+                    // Transpose if pair order is different.
+                    sellReserve := mload(0xC00)
+                    buyReserve := mload(0xC20)
+                }
+                default {
+                    sellReserve := mload(0xC20)
+                    buyReserve := mload(0xC00)
+                }
+                // Pairs are in the range (0, 2¹¹²) so this shouldn't overflow.
+                // buyAmount = (pairSellAmount * 997 * buyReserve) /
+                //     (pairSellAmount * 997 + sellReserve * 1000);
+                let sellAmountWithFee := mul(amountIn, 997)
+                buyAmount := div(mul(sellAmountWithFee, buyReserve), add(sellAmountWithFee, mul(sellReserve, 1000)))
+
+                // selector for swap(...)
+                mstore(0xB00, 0x022c0d9f00000000000000000000000000000000000000000000000000000000)
+
+                switch zeroForOne
+                case 0 {
+                    mstore(0xB04, buyAmount)
+                    mstore(0xB24, 0)
+                }
+                default {
+                    mstore(0xB04, 0)
+                    mstore(0xB24, buyAmount)
+                }
+                mstore(0xB44, address())
+                mstore(0xB64, 0x80)
+                mstore(0xB84, 0)
+
+                success := call(
+                    gas(),
+                    pair,
+                    0x0,
+                    0xB00, // input selector
+                    0xA4, // input size = selector plus uint256
+                    0, // output
+                    0 // output size = 64
+                )
+                if iszero(success) {
+                    // Forward the error
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+            }
+        }
+    }
+
+    function getAmountInDirect(
+        address pair,
+        bool zeroForOne,
+        uint256 buyAmount
+    ) internal view returns (uint256 sellAmount) {
+        assembly {
+            // Call pair.getReserves(), store the results at `0xC00`
+            mstore(0xB00, 0x0902f1ac00000000000000000000000000000000000000000000000000000000)
+            if iszero(staticcall(gas(), pair, 0xB00, 0x4, 0xC00, 0x40)) {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+            // Revert if the pair contract does not return at least two words.
+            if lt(returndatasize(), 0x40) {
+                revert(0, 0)
+            }
+
+            // Compute the buy amount based on the pair reserves.
+            {
+                let sellReserve
+                let buyReserve
+                switch iszero(zeroForOne)
+                case 0 {
+                    // Transpose if pair order is different.
+                    sellReserve := mload(0xC00)
+                    buyReserve := mload(0xC20)
+                }
+                default {
+                    sellReserve := mload(0xC20)
+                    buyReserve := mload(0xC00)
+                }
+                // Pairs are in the range (0, 2¹¹²) so this shouldn't overflow.
+                // sellAmount = (reserveIn * amountOut * 1000) /
+                //     ((reserveOut - amountOut) * 997) + 1;
+                sellAmount := add(div(mul(mul(sellReserve, buyAmount), 1000), mul(sub(buyReserve, buyAmount), 997)), 1)
+            }
+        }
+    }
+
+    function flashSwapExactOut(uint256 amountOut, bytes memory data) internal {
+        address tokenIn;
+        address tokenOut;
+        uint8 identifier;
+        assembly {
+            tokenOut := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
+            identifier := mload(add(add(data, 0x1), 23)) // identifier for poolId
+            tokenIn := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
+        }
+
+        // uniswapV2 style
+        if (identifier == 0) {
+            bool zeroForOne = tokenIn < tokenOut;
+            // get next pool
+            address pool = pairAddress(tokenIn, tokenOut);
+            uint256 referenceAmount = getAmountInDirect(pool, zeroForOne, amountOut);
+            uint256 amountOut0;
+            // amountOut0, cache
+            (amountOut0, amountOut) = zeroForOne ? (uint256(0), referenceAmount) : (referenceAmount, uint256(0));
+            IUniswapV2Pair(pool).swap(amountOut0, amountOut, address(this), data); // cannot swap to sender due to flashSwap
+            _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
+        }
+        // uniswapV3 style
+        else if (identifier == 1) {
+            bool zeroForOne = tokenIn < tokenOut;
+            uint24 fee;
+            assembly {
+                fee := mload(add(add(data, 0x3), 20))
+            }
+            getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+                msg.sender,
+                zeroForOne,
+                -int256(amountOut),
+                zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
+                data
+            );
+        }
+    }
+
+    // fetches first pool as bytes slice (tokenIn, tradeId, poolId, fee, tokenOut) from bytes array
     function sliceFirstPool(bytes memory _bytes) internal pure returns (bytes memory tempBytes) {
         assembly {
-            // Get a location of some free memory and store it in tempBytes as
-            // Solidity does for memory variables.
             tempBytes := mload(0x40)
-
-            // The first word of the slice result is potentially a partial
-            // word read from the original array. To read it, we calculate
-            // the length of that partial word and start copying that many
-            // bytes into the array. The first word we copy will start with
-            // data we don't care about, but the last `lengthmod` bytes will
-            // land at the beginning of the contents of the new array. When
-            // we're done copying, we overwrite the full first word with
-            // the actual length of the slice.
             let lengthmod := and(45, 31)
-
-            // The multiplication in the next line is necessary
-            // because when slicing multiples of 32 bytes (lengthmod == 0)
-            // the following copy loop was copying the origin's length
-            // and then ending prematurely not copying everything it should.
             let mc := add(add(tempBytes, lengthmod), mul(0x20, iszero(lengthmod)))
             let end := add(mc, 45)
 
             for {
-                // The multiplication in the next line has the same exact purpose
-                // as the one above.
                 let cc := add(add(_bytes, lengthmod), mul(0x20, iszero(lengthmod)))
             } lt(mc, end) {
                 mc := add(mc, 0x20)
@@ -144,8 +397,6 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
 
             mstore(tempBytes, 45)
 
-            //update free-memory pointer
-            //allocating the array padded to 32 bytes like the compiler does now
             mstore(0x40, and(add(mc, 31), not(31)))
         }
     }

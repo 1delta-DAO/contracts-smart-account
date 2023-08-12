@@ -19,7 +19,7 @@ contract UniswapCallbackModuleGoerli is GoerliCompoundCTokenData, CoreUniswapV3C
         address _factory,
         address _weth,
         address _router
-    ) CoreUniswapV3CallbackModule(_factory, _weth, _router) GoerliCompoundCTokenData() {}
+    ) CoreUniswapV3CallbackModule(address(0),_factory, _weth, _router) GoerliCompoundCTokenData() {}
 
     function cToken(address underlying) internal view override returns (ICompoundTypeCERC20) {
         return _cToken(underlying);
