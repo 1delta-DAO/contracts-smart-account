@@ -137,12 +137,12 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
         if (tradeId == 1) {
             cache = data.length;
             uint256 referenceAmount = zeroForOne ? amount0 : amount1;
+            referenceAmount = getAmountInDirect(pool, zeroForOne, referenceAmount);
             // either initiate the next swap or pay
             if (cache > 46) {
                 data = skipToken(data);
                 flashSwapExactOut(referenceAmount, data);
             } else {
-                referenceAmount = getAmountInDirect(pool, !zeroForOne, referenceAmount);
                 assembly {
                     identifier := mload(add(add(data, 0x1), sub(cache, 1))) // identifier for borrow/withdraw
                 }
@@ -205,6 +205,7 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
             }
         } else {
             uint256 referenceAmount = zeroForOne ? amount0 : amount1;
+
             // 4 is deposit
             if (tradeId == 4) {
                 _mint(cTokenAddress(tokenIn), referenceAmount);
@@ -212,13 +213,13 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
                 // 3 is repay
                 _repayBorrow(cTokenAddress(tokenIn), referenceAmount);
             }
+
+            referenceAmount = getAmountInDirect(pool, zeroForOne, referenceAmount);
             // constinue swapping if more data is provided
             if (cache > 46) {
                 data = skipToken(data);
                 flashSwapExactOut(referenceAmount, data);
             } else {
-                // amount is now the amount to borrow/withdraw
-                referenceAmount = getAmountInDirect(pool, !zeroForOne, referenceAmount);
                 // cache amount
                 cs().amount = referenceAmount;
                 tokenIn = cTokenAddress(tokenOut);

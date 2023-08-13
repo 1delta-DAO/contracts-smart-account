@@ -195,7 +195,10 @@ export async function addLiquidity(
 
     console.log("add liquidity", tokenAddressA, tokenAddressB)
 
-    return uniswap.nft.connect(signer).mint(liquidityParams)
+    await uniswap.nft.connect(signer).mint(liquidityParams)
+
+    const pair = await uniswap.factory.getPool(tokenAddressA, tokenAddressB, FeeAmount.MEDIUM)
+    console.log("Pool", pair)
 }
 
 const overrides = {

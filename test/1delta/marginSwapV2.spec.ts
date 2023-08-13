@@ -330,6 +330,53 @@ describe('Account based single margin swaps', async () => {
         expect(borrowAmount.toString()).to.equal(swapAmount.toString())
     })
 
+    it.only('allows margin swap exact in multi 3-hop', async () => {
+        // enter markets directly
+        accountAlice = await createMarginTradingAccountWithV2(alice, accountFixture, true)
+
+        const supplyTokenIndex = 3
+        const borrowTokenIndex = 0
+        const providedAmount = expandTo18Decimals(500)
+
+        // enter market
+        await enterMarkets(alice, accountAlice.address, compound)
+
+        await network.provider.send("evm_increaseTime", [3600])
+        await network.provider.send("evm_mine")
+
+        const swapAmount = expandTo18Decimals(450)
+
+        const routeIndexes = [borrowTokenIndex, 1, 2, supplyTokenIndex]
+        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
+        const path = encodeAggregtorPathEthers(
+            _tokensInRoute,
+            new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
+            [6, 0, 0], // action
+            [0, 1, 0], // pid
+            6 // flag
+        )
+
+        const params = {
+            path,
+            amountOutMinimum: swapAmount.mul(95).div(100),
+            amountIn: swapAmount,
+        }
+
+        await uniswap.tokens[supplyTokenIndex].connect(alice).approve(accountAlice.address, constants.MaxUint256)
+
+        const accountMM = await getMoneyMarketAccount(alice, accountAlice.address)
+        await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
+
+        console.log("Open multi")
+        // execute margin swap
+        await accountAlice.connect(alice).openMarginPositionExactInV2(params.amountIn, params.amountOutMinimum, params.path)
+
+        const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
+        const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
+
+        expect(borrowAmount.toString()).to.equal(swapAmount.toString())
+    })
+
 
     it.only('allows margin swap exact out', async () => {
         // enter markets directly

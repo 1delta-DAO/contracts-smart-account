@@ -204,7 +204,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
 
             let pair := and(ADDRESS_MASK_LOWER, keccak256(0xB00, 0x55))
 
-            // EXECUTE TRANSFER
+            // EXECUTE TRANSFER TO PAIR
             let ptr := mload(0x40) // free memory pointer
             // selector for transfer(address,uint256)
             mstore(ptr, 0xa9059cbb00000000000000000000000000000000000000000000000000000000)
@@ -279,17 +279,17 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
                     mstore(0xB24, buyAmount)
                 }
                 mstore(0xB44, address())
-                mstore(0xB64, 0x80)
-                mstore(0xB84, 0)
+                mstore(0xB64, 0x80) // bytes classifier
+                mstore(0xB84, 0) // bytesdata
 
                 success := call(
                     gas(),
                     pair,
                     0x0,
                     0xB00, // input selector
-                    0xA4, // input size = selector plus uint256
-                    0, // output
-                    0 // output size = 64
+                    0xA4, // input size = 164 (selector (4bytes) plus 5*32bytes)
+                    0, // output = 0
+                    0 // output size = 0
                 )
                 if iszero(success) {
                     // Forward the error
@@ -306,9 +306,10 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         uint256 buyAmount
     ) internal view returns (uint256 sellAmount) {
         assembly {
-            // Call pair.getReserves(), store the results at `0xC00`
-            mstore(0xB00, 0x0902f1ac00000000000000000000000000000000000000000000000000000000)
-            if iszero(staticcall(gas(), pair, 0xB00, 0x4, 0xC00, 0x40)) {
+            let ptr := mload(0x40)
+            // Call pair.getReserves(), store the results at `free memo`
+            mstore(ptr, 0x0902f1ac00000000000000000000000000000000000000000000000000000000)
+            if iszero(staticcall(gas(), pair, ptr, 0x4, ptr, 0x40)) {
                 returndatacopy(0, 0, returndatasize())
                 revert(0, returndatasize())
             }
@@ -324,12 +325,12 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
                 switch iszero(zeroForOne)
                 case 0 {
                     // Transpose if pair order is different.
-                    sellReserve := mload(0xC00)
-                    buyReserve := mload(0xC20)
+                    sellReserve := mload(add(ptr, 0x20))
+                    buyReserve := mload(0xC00)
                 }
                 default {
-                    sellReserve := mload(0xC20)
-                    buyReserve := mload(0xC00)
+                    sellReserve := mload(ptr)
+                    buyReserve := mload(add(ptr, 0x20))
                 }
                 // Pairs are in the range (0, 2¹¹²) so this shouldn't overflow.
                 // sellAmount = (reserveIn * amountOut * 1000) /
@@ -354,12 +355,12 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             bool zeroForOne = tokenIn < tokenOut;
             // get next pool
             address pool = pairAddress(tokenIn, tokenOut);
-            uint256 referenceAmount = getAmountInDirect(pool, zeroForOne, amountOut);
             uint256 amountOut0;
+            uint256 amountOut1;
             // amountOut0, cache
-            (amountOut0, amountOut) = zeroForOne ? (uint256(0), referenceAmount) : (referenceAmount, uint256(0));
-            IUniswapV2Pair(pool).swap(amountOut0, amountOut, address(this), data); // cannot swap to sender due to flashSwap
-            _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
+            (amountOut0, amountOut1) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
+            IUniswapV2Pair(pool).swap(amountOut0, amountOut1, address(this), data); // cannot swap to sender due to flashSwap
+            _transferERC20Tokens(tokenOut, msg.sender, amountOut);
         }
         // uniswapV3 style
         else if (identifier == 1) {
