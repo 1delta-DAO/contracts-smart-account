@@ -243,26 +243,43 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
 
     // increase the margin position - borrow (tokenIn) and sell it against collateral (tokenOut)
     // the user provides the debt amount as input
-    function openMarginPositionExactInV2(
+    function swapExactIn(
         uint256 amountIn,
         uint256 amountOutMinimum,
         bytes memory path
     ) external returns (uint256 amountOut) {
         address tokenIn;
         address tokenOut;
+        bool zeroForOne;
+        uint8 identifier;
         assembly {
             tokenIn := div(mload(add(path, 0x20)), 0x1000000000000000000000000)
+            identifier := mload(add(add(path, 0x1), 23)) // identifier for poolId
             tokenOut := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
+            zeroForOne := lt(tokenIn, tokenOut)
         }
 
-        bool zeroForOne = tokenIn < tokenOut;
-        cs().amount = amountIn;
-        address pool = pairAddress(tokenIn, tokenOut);
-        (uint256 amount0Out, uint256 amount1Out) = zeroForOne
-            ? (uint256(0), getAmountOutDirect(pool, zeroForOne, amountIn))
-            : (getAmountOutDirect(pool, zeroForOne, amountIn), uint256(0));
-        IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), path);
-
+        // uniswapV2 style
+        if (identifier == 0) {
+            cs().amount = amountIn;
+            address pool = pairAddress(tokenIn, tokenOut);
+            (uint256 amount0Out, uint256 amount1Out) = zeroForOne
+                ? (uint256(0), getAmountOutDirect(pool, zeroForOne, amountIn))
+                : (getAmountOutDirect(pool, zeroForOne, amountIn), uint256(0));
+            IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), path);
+        } else if (identifier == 1) {
+            uint24 fee;
+            assembly {
+                fee := mload(add(add(path, 0x3), 20))
+            }
+            getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+                address(this),
+                zeroForOne,
+                int256(amountIn),
+                zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
+                path
+            );
+        }
         amountOut = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
         if (amountOutMinimum > amountOut) revert Slippage();
@@ -270,23 +287,37 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
 
     // increase the margin position - borrow (tokenIn) and sell it against collateral (tokenOut)
     // the user provides the debt amount as input
-    function openMarginPositionExactOutV2(
+    function swapExactOut(
         uint256 amountOut,
         uint256 amountInMaximum,
         bytes memory path
     ) external returns (uint256 amountIn) {
         address tokenIn;
         address tokenOut;
+        bool zeroForOne;
+        uint8 identifier;
         assembly {
             tokenOut := div(mload(add(path, 0x20)), 0x1000000000000000000000000)
             tokenIn := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
+            zeroForOne := lt(tokenIn, tokenOut)
         }
-
-        bool zeroForOne = tokenIn < tokenOut;
-        address pool = pairAddress(tokenIn, tokenOut);
-        (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
-        IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), path);
-
+        if (identifier == 0) {
+            address pool = pairAddress(tokenIn, tokenOut);
+            (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
+            IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), path);
+        } else if (identifier == 1) {
+            uint24 fee;
+            assembly {
+                fee := mload(add(add(path, 0x3), 20))
+            }
+            getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+                address(this),
+                zeroForOne,
+                -int256(amountOut),
+                zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
+                path
+            );
+        }
         amountIn = cs().amount;
         cs().amount = DEFAULT_AMOUNT_CACHED;
         if (amountInMaximum < amountIn) revert Slippage();
