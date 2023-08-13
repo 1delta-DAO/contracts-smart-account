@@ -32,6 +32,8 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
 
     /// @dev Mask of lower 20 bytes.
     uint256 private constant ADDRESS_MASK = 0x00ffffffffffffffffffffffffffffffffffffffff;
+    /// @dev Mask of upper 20 bytes.
+    uint256 private constant ADDRESS_MASK_UPPER = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
     /// @dev Mask of lower 3 bytes.
     uint256 private constant UINT24_MASK = 0xffffff;
 
@@ -40,22 +42,17 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
     /// @dev MAX_SQRT_RATIO - 1 from Uniswap's TickMath
     uint160 internal immutable MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970341;
 
-    address private immutable uniswapV3Factory;
-
-    bytes32 private immutable UNI_FF_FACTORY_ADDRESS;
+    bytes32 private immutable UNI_V3_FF_FACTORY;
     bytes32 private constant UNI_POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
+    bytes32 private immutable UNI_V2_FF_FACTORY;
     bytes32 private constant CODE_HASH_UNI_V2 = 0xf2a343db983032be4e17d2d9d614e0dd9a305aed3083e6757c5bb8e2ab607abe;
-    uint256 private constant ADDRESS_MASK_LOWER = 0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
-
-    bytes32 private immutable FF_UNISWAP_FACTORY;
 
     constructor(address _factoryV2, address _factoryV3) {
         // V3 factory
-        uniswapV3Factory = _factoryV3;
-        UNI_FF_FACTORY_ADDRESS = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factoryV3)) << 88));
+        UNI_V3_FF_FACTORY = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factoryV3)) << 88));
         // v2 factory
-        FF_UNISWAP_FACTORY = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factoryV2)) << 88));
+        UNI_V2_FF_FACTORY = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factoryV2)) << 88));
     }
 
     /// @dev Returns the pool for the given token pair and fee. The pool contract may or may not exist.
@@ -64,7 +61,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         address tokenB,
         uint24 fee
     ) internal view returns (IUniswapV3Pool pool) {
-        bytes32 ffFactoryAddress = UNI_FF_FACTORY_ADDRESS;
+        bytes32 ffFactoryAddress = UNI_V3_FF_FACTORY;
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         assembly {
             let s := mload(0x40)
@@ -82,8 +79,9 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         }
     }
 
+    /// @dev gets uniswapV2 (and fork) pair addresses
     function pairAddress(address tokenA, address tokenB) internal view returns (address pair) {
-        bytes32 ff_uni = FF_UNISWAP_FACTORY;
+        bytes32 ff_uni = UNI_V2_FF_FACTORY;
         assembly {
             switch lt(tokenA, tokenB)
             case 0 {
@@ -103,6 +101,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         }
     }
 
+    /// @dev deprecated uniswapV3 exat input swapper
     function exactInputToSelf(uint256 amountIn, bytes memory _data) internal returns (uint256 amountOut) {
         while (true) {
             address tokenIn;
@@ -137,7 +136,8 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         }
     }
 
-    // swaps exact input through UniswapV3 or UniswapV2 style exactIn
+    /// @dev swaps exact input through UniswapV3 or UniswapV2 style exactIn
+    /// only uniswapV3 executes flashSwaps
     function swapExactIn(uint256 amountIn, bytes memory path) internal returns (uint256 amountOut) {
         while (true) {
             address tokenIn;
@@ -179,13 +179,13 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         }
     }
 
-    // simple exact input swap using uniswapV2 or fork
+    /// @dev simple exact input swap using uniswapV2 or fork
     function swapUniV2ExactIn(
         address tokenIn,
         address tokenOut,
         uint256 amountIn
     ) private returns (uint256 buyAmount) {
-        bytes32 ff_uni = FF_UNISWAP_FACTORY;
+        bytes32 ff_uni = UNI_V2_FF_FACTORY;
         assembly {
             let zeroForOne := lt(tokenIn, tokenOut)
             switch zeroForOne
@@ -202,16 +202,16 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             mstore(0xB15, salt)
             mstore(0xB35, CODE_HASH_UNI_V2)
 
-            let pair := and(ADDRESS_MASK_LOWER, keccak256(0xB00, 0x55))
+            let pair := and(ADDRESS_MASK_UPPER, keccak256(0xB00, 0x55))
 
             // EXECUTE TRANSFER TO PAIR
             let ptr := mload(0x40) // free memory pointer
             // selector for transfer(address,uint256)
             mstore(ptr, 0xa9059cbb00000000000000000000000000000000000000000000000000000000)
-            mstore(add(ptr, 0x04), and(pair, ADDRESS_MASK_LOWER))
+            mstore(add(ptr, 0x04), and(pair, ADDRESS_MASK_UPPER))
             mstore(add(ptr, 0x24), amountIn)
 
-            let success := call(gas(), and(tokenIn, ADDRESS_MASK_LOWER), 0, ptr, 0x44, ptr, 32)
+            let success := call(gas(), and(tokenIn, ADDRESS_MASK_UPPER), 0, ptr, 0x44, ptr, 32)
 
             let rdsize := returndatasize()
 

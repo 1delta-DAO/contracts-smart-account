@@ -72,13 +72,14 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
         // EXACT OUT - WITHDRAW or BORROW
         else if (tradeId == 1) {
             cache = _data.length;
-            // multi swap exact out
+            // fetch amount that has to be paid to the pool
             uint256 amountToPay = amount0Delta > 0 ? uint256(amount0Delta) : uint256(amount1Delta);
             // either initiate the next swap or pay
             if (cache > 46) {
                 _data = skipToken(_data);
                 flashSwapExactOut(amountToPay, _data);
             } else {
+                // re-assign identifier
                 assembly {
                     identifier := mload(add(add(_data, 0x1), sub(cache, 1))) // identifier for borrow/withdraw
                 }

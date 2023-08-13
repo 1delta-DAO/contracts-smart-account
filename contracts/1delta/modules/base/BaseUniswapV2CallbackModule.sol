@@ -114,29 +114,36 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
         uint8 tradeId;
         address tokenIn;
         address tokenOut;
+        bool zeroForOne;
         uint8 identifier;
         {
             uint24 fee;
             assembly {
                 tokenIn := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
-                fee := mload(add(add(data, 0x3), 20))
-                identifier := mload(add(add(data, 0x1), 23))
-                tradeId := mload(add(add(data, 0x1), 24))
+                fee := mload(add(add(data, 0x3), 20)) // uniswapV3 style fee
+                identifier := mload(add(add(data, 0x1), 23)) // uniswap fork identifier
+                tradeId := mload(add(add(data, 0x1), 24)) // interaction identifier
                 tokenOut := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
+                zeroForOne := lt(tokenIn, tokenOut)
             }
         }
-        assembly {
-            identifier := mload(add(add(data, 0x1), 24)) // identifier for  tradeType
-        }
-        bool zeroForOne = tokenIn < tokenOut;
+
+        // calculate pool address
         address pool = pairAddress(tokenIn, tokenOut);
         {
+            // validate sender
             require(msg.sender == pool);
+        }
+        // store identifier for tradeType in identifier variable
+        assembly {
+            identifier := mload(add(add(data, 0x1), 24)) // identifier for  tradeType
         }
         cache = data.length;
         if (tradeId == 1) {
             cache = data.length;
+            // fetch amountOut
             uint256 referenceAmount = zeroForOne ? amount0 : amount1;
+            // calculte amountIn
             referenceAmount = getAmountInDirect(pool, zeroForOne, referenceAmount);
             // either initiate the next swap or pay
             if (cache > 46) {
@@ -166,7 +173,7 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
         }
         if (tradeId > 5) {
             // the swap amount is expected to be the nonzero output amount
-            // since v2 does not send the input amount as argument, we have to fetch
+            // since v2 does not send the input amount as parameter, we have to fetch
             // the other amount manually through the cache
             (uint256 amountToSwap, uint256 amountToBorrow) = zeroForOne ? (amount1, cs().amount) : (amount0, cs().amount);
             if (cache > 46) {
@@ -204,8 +211,8 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
                 _transferERC20Tokens(tokenIn, msg.sender, amountToBorrow);
             }
         } else {
+            // fetch amountOut
             uint256 referenceAmount = zeroForOne ? amount0 : amount1;
-
             // 4 is deposit
             if (tradeId == 4) {
                 _mint(cTokenAddress(tokenIn), referenceAmount);
@@ -213,7 +220,7 @@ abstract contract BaseUniswapV2CallbackModule is BaseSwapper, WithStorage, Lendi
                 // 3 is repay
                 _repayBorrow(cTokenAddress(tokenIn), referenceAmount);
             }
-
+            // calcultae amountIn
             referenceAmount = getAmountInDirect(pool, zeroForOne, referenceAmount);
             // constinue swapping if more data is provided
             if (cache > 46) {
