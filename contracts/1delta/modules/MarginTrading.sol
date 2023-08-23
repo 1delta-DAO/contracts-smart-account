@@ -56,11 +56,11 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         // uniswapV2 style
         if (identifier == 0) {
             ncs().amount = amountIn;
-            address pool = pairAddress(tokenIn, tokenOut);
+            tokenIn = pairAddress(tokenIn, tokenOut);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne
-                ? (uint256(0), getAmountOutDirect(pool, zeroForOne, amountIn))
-                : (getAmountOutDirect(pool, zeroForOne, amountIn), uint256(0));
-            IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), path);
+                ? (uint256(0), getAmountOutDirect(tokenIn, zeroForOne, amountIn))
+                : (getAmountOutDirect(tokenIn, zeroForOne, amountIn), uint256(0));
+            IUniswapV2Pair(tokenIn).swap(amount0Out, amount1Out, address(this), path);
         } else if (identifier == 1) {
             uint24 fee;
             assembly {
@@ -95,9 +95,9 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
             zeroForOne := lt(tokenIn, tokenOut)
         }
         if (identifier == 0) {
-            address pool = pairAddress(tokenIn, tokenOut);
+            tokenIn = pairAddress(tokenIn, tokenOut);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
-            IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), path);
+            IUniswapV2Pair(tokenIn).swap(amount0Out, amount1Out, address(this), path);
         } else if (identifier == 1) {
             uint24 fee;
             assembly {
