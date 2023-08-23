@@ -17,7 +17,7 @@ import {BaseSwapper} from "./base/BaseSwapper.sol";
 // solhint-disable max-line-length
 
 /**
- * @title Uniswap Callback Base contract
+ * @title Contract Module for general Margin Trading on a Compound-Style Lender
  * @notice Contains main logic for uniswap callbacks
  */
 contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, LendingInteractions, BaseSwapper {
@@ -32,8 +32,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         address _cNative
     ) LendingInteractions(_cNative, _nativeWrapper) BaseSwapper(_factoryV2, _factoryV3) {}
 
-    // increase the margin position - borrow (tokenIn) and sell it against collateral (tokenOut)
-    // the user provides the debt amount as input
+    // Exact Input Swap - The path parameters determine the lending actions
     function swapExactIn(
         uint256 amountIn,
         uint256 amountOutMinimum,
@@ -76,8 +75,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         if (amountOutMinimum > amountOut) revert Slippage();
     }
 
-    // increase the margin position - borrow (tokenIn) and sell it against collateral (tokenOut)
-    // the user provides the debt amount as input
+    // Exact Optput Swap - The path parameters determine the lending actions
     function swapExactOut(
         uint256 amountOut,
         uint256 amountInMaximum,
@@ -122,6 +120,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
     // 5: deposit funds
     // 6: repay funds
 
+    // The uniswapV3 style callback
     function uniswapV3SwapCallback(
         int256 amount0Delta,
         int256 amount1Delta,
@@ -309,8 +308,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         }
     }
 
-    // path is encoded as addresses glued together
-
+    // The uniswapV2 style callback
     function uniswapV2Call(
         address,
         uint256 amount0,
@@ -323,16 +321,13 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         address tokenOut;
         bool zeroForOne;
         uint8 identifier;
-        {
-            uint24 fee;
-            assembly {
-                tokenIn := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
-                fee := mload(add(add(data, 0x3), 20)) // uniswapV3 style fee
-                identifier := mload(add(add(data, 0x1), 23)) // uniswap fork identifier
-                tradeId := mload(add(add(data, 0x1), 24)) // interaction identifier
-                tokenOut := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
-                zeroForOne := lt(tokenIn, tokenOut)
-            }
+        // the fee parameter in the path can be ignored for validating a V2 pool
+        assembly {
+            tokenIn := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
+            identifier := mload(add(add(data, 0x1), 23)) // uniswap fork identifier
+            tradeId := mload(add(add(data, 0x1), 24)) // interaction identifier
+            tokenOut := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
+            zeroForOne := lt(tokenIn, tokenOut)
         }
 
         // calculate pool address
