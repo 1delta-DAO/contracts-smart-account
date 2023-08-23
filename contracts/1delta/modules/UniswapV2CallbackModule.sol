@@ -13,7 +13,6 @@ import {BaseSwapper} from "./base/BaseSwapper.sol";
 
 contract UniswapV2CallbackModule is BaseSwapper, WithStorage, LendingInteractions {
     using BytesLib for bytes;
-    error Slippage();
 
     constructor(
         address _uniFactory,
