@@ -6,14 +6,15 @@ pragma solidity 0.8.21;
 * Author: Achthar | 1delta 
 /******************************************************************************/
 
-import {SafeCast} from "../../dex-tools/uniswap/core/SafeCast.sol";
-import {PoolAddressCalculator} from "../../dex-tools/uniswap/libraries/PoolAddressCalculator.sol";
-import {IUniswapV3SwapCallback} from "../../dex-tools/uniswap/core/IUniswapV3SwapCallback.sol";
-import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
-import {WithStorage} from "../../libraries/LibStorage.sol";
-import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
-import {LendingInteractions} from "../../libraries/LendingInteractions.sol";
-import {BaseSwapper} from "./BaseSwapper.sol";
+import {IDataProvider} from "../interfaces/IDataProvider.sol";
+import {SafeCast} from "../dex-tools/uniswap/core/SafeCast.sol";
+import {PoolAddressCalculator} from "../dex-tools/uniswap/libraries/PoolAddressCalculator.sol";
+import {IUniswapV3SwapCallback} from "../dex-tools/uniswap/core/IUniswapV3SwapCallback.sol";
+import {TokenTransfer} from "../libraries/TokenTransfer.sol";
+import {WithStorage} from "../libraries/LibStorage.sol";
+import {TokenTransfer} from "../libraries/TokenTransfer.sol";
+import {LendingInteractions} from "../libraries/LendingInteractions.sol";
+import {BaseSwapper} from "./base/BaseSwapper.sol";
 
 // solhint-disable max-line-length
 
@@ -21,7 +22,7 @@ import {BaseSwapper} from "./BaseSwapper.sol";
  * @title Uniswap Callback Base contract
  * @notice Contains main logic for uniswap callbacks
  */
-abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, TokenTransfer, LendingInteractions, BaseSwapper {
+contract UniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, TokenTransfer, LendingInteractions, BaseSwapper {
     using SafeCast for uint256;
 
     constructor(
@@ -203,7 +204,11 @@ abstract contract BaseUniswapV3CallbackModule is IUniswapV3SwapCallback, WithSto
         }
     }
 
-    function cTokenAddress(address underlying) internal view virtual returns (address);
+    function cTokenPair(address underlying, address underlyingOther) internal view returns (address, address) {
+        return IDataProvider(ps().dataProvider).cTokenPair(underlying, underlyingOther);
+    }
 
-    function cTokenPair(address underlying, address underlyingOther) internal view virtual returns (address, address);
+    function cTokenAddress(address underlying) internal view returns (address) {
+        return IDataProvider(ps().dataProvider).cTokenAddress(underlying);
+    }
 }
