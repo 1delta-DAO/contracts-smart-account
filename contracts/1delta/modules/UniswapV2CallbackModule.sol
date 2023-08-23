@@ -6,12 +6,9 @@ pragma solidity ^0.8.21;
 
 import {IDataProvider} from "../interfaces/IDataProvider.sol";
 import {IUniswapV2Pair} from "../../external-protocols/uniswapV2/core/interfaces/IUniswapV2Pair.sol";
-import {TokenTransfer} from "../libraries/TokenTransfer.sol";
-import {IERC20} from "../../interfaces/IERC20.sol";
 import {BytesLib} from "../libraries/BytesLib.sol";
 import {WithStorage} from "../libraries/LibStorage.sol";
 import {LendingInteractions} from "../libraries/LendingInteractions.sol";
-import {IUniswapV3Pool} from "../dex-tools/uniswap/core/IUniswapV3Pool.sol";
 import {BaseSwapper} from "./base/BaseSwapper.sol";
 
 contract UniswapV2CallbackModule is BaseSwapper, WithStorage, LendingInteractions {

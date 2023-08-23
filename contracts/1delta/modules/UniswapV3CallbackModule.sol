@@ -7,12 +7,9 @@ pragma solidity 0.8.21;
 /******************************************************************************/
 
 import {IDataProvider} from "../interfaces/IDataProvider.sol";
-import {SafeCast} from "../dex-tools/uniswap/core/SafeCast.sol";
-import {PoolAddressCalculator} from "../dex-tools/uniswap/libraries/PoolAddressCalculator.sol";
 import {IUniswapV3SwapCallback} from "../dex-tools/uniswap/core/IUniswapV3SwapCallback.sol";
 import {TokenTransfer} from "../libraries/TokenTransfer.sol";
 import {WithStorage} from "../libraries/LibStorage.sol";
-import {TokenTransfer} from "../libraries/TokenTransfer.sol";
 import {LendingInteractions} from "../libraries/LendingInteractions.sol";
 import {BaseSwapper} from "./base/BaseSwapper.sol";
 
@@ -23,7 +20,6 @@ import {BaseSwapper} from "./base/BaseSwapper.sol";
  * @notice Contains main logic for uniswap callbacks
  */
 contract UniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, TokenTransfer, LendingInteractions, BaseSwapper {
-    using SafeCast for uint256;
 
     constructor(
         address _factoryV2,
