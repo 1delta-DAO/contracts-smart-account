@@ -35,6 +35,8 @@ import {
     SweeperModule__factory,
     UniswapV2CallbackModule,
     UniswapV2CallbackModule__factory,
+    TradingInterface__factory,
+    TradingInterface,
 } from '../../../types'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ModuleConfigAction, getSelectors } from '../../diamond/libraries/diamond'
@@ -52,6 +54,7 @@ import MoneyMarketArtifact from "../../../artifacts/contracts/1delta/modules/Mon
 import MarginTraderArtifact from "../../../artifacts/contracts/1delta/modules/MarginTraderModule.sol/MarginTraderModule.json"
 import SweeperArtifact from "../../../artifacts/contracts/1delta/modules/SweeperModule.sol/SweeperModule.json"
 import UniV2CallbackArtifact from "../../../artifacts/contracts/1delta/modules/UniswapV2CallbackModule.sol/UniswapV2CallbackModule.json"
+import TradingInterfaceArtifact from "../../../artifacts/contracts/1delta/modules/TradingInterface.sol/TradingInterface.json"
 
 export interface AccountFactoryFixture {
     diamondDeployer: OneDeltaAccountFactory
@@ -73,7 +76,8 @@ export interface AccountFactoryFixtureWithV2 {
     dataProvider: DataProvider
     accountInit: AccountInit
     delegatorModule: DelegatorModule
-    v2module: UniswapV2CallbackModule
+    v2module: TradingInterface
+    v2callback: UniswapV2CallbackModule
 }
 
 export async function accountFactoryFixture(signer: SignerWithAddress, factory: UniswapV3Factory, weth: IWETH9, cNative: string, factoryV2: string): Promise<AccountFactoryFixture> {
@@ -437,7 +441,8 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, uni
     let marginTraderModule: MarginTraderModule
     let callbackModule: UniswapCallbackModule
     let minimalRouter: MinimalSwapRouter
-    let v2module: UniswapV2CallbackModule
+    let v2module: TradingInterface
+    let v2callback: UniswapV2CallbackModule
 
     moduleManager = await new OneDeltaModuleManager__factory(signer).deploy()
     accountInit = await new AccountInit__factory(signer).deploy()
@@ -446,7 +451,8 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, uni
     minimalRouter = await new MinimalSwapRouter__factory(signer).deploy(uniV3factory.address, weth.address)
     moneyMarketModule = await new MoneyMarketModule__factory(signer).deploy(uniV3factory.address, weth.address, minimalRouter.address)
     SweeperModule = await new SweeperModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, minimalRouter.address)
-    v2module = await new UniswapV2CallbackModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
+    v2callback = await new UniswapV2CallbackModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
+    v2module = await new TradingInterface__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
     callbackModule = await new UniswapCallbackModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
 
     await moduleManager.connect(signer).configureModules(
@@ -506,6 +512,15 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, uni
         }]
     )
 
+
+    await moduleManager.connect(signer).configureModules(
+        [{
+            moduleAddress: v2callback.address,
+            action: ModuleConfigAction.Add,
+            functionSelectors: getSelectors(v2callback)
+        }]
+    )
+
     dataProvider = await deployDataProvider(signer)
 
     const diamondDeployerLogic = await new OneDeltaAccountFactory__factory(signer).deploy()
@@ -533,12 +548,13 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, uni
         delegatorModule,
         marginTraderModule,
         SweeperModule,
-        v2module
+        v2module,
+        v2callback
     }
 }
 
-export async function createMarginTradingAccountWithV2(signer: SignerWithAddress, fixture: AccountFactoryFixture, setUp = false, name = "test"): Promise<MarginTraderModule & UniswapV2CallbackModule> {
+export async function createMarginTradingAccountWithV2(signer: SignerWithAddress, fixture: AccountFactoryFixture, setUp = false, name = "test"): Promise<MarginTraderModule & TradingInterface> {
     await fixture.diamondDeployer.connect(signer).createAccount(name, setUp)
     const accs = await fixture.diamondDeployer.getAccounts(signer.address)
-    return (await new ethers.Contract(accs[accs.length - 1], [...MarginTraderArtifact.abi, ...UniV2CallbackArtifact.abi], signer)) as MarginTraderModule & UniswapV2CallbackModule
+    return (await new ethers.Contract(accs[accs.length - 1], [...MarginTraderArtifact.abi, ...TradingInterfaceArtifact.abi], signer)) as MarginTraderModule & TradingInterface
 }
