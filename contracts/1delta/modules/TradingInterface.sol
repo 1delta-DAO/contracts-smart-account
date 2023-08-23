@@ -86,7 +86,7 @@ contract TradingInterface is WithStorage, BaseSwapper, LendingInteractions {
 
         // uniswapV2 style
         if (identifier == 0) {
-            cs().amount = amountIn;
+            ncs().amount = amountIn;
             address pool = pairAddress(tokenIn, tokenOut);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne
                 ? (uint256(0), getAmountOutDirect(pool, zeroForOne, amountIn))
@@ -105,8 +105,8 @@ contract TradingInterface is WithStorage, BaseSwapper, LendingInteractions {
                 path
             );
         }
-        amountOut = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountOut = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         if (amountOutMinimum > amountOut) revert Slippage();
     }
 
@@ -143,8 +143,8 @@ contract TradingInterface is WithStorage, BaseSwapper, LendingInteractions {
                 path
             );
         }
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         if (amountInMaximum < amountIn) revert Slippage();
     }
 

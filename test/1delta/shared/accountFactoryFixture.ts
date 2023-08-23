@@ -447,6 +447,7 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, uni
     let v2module: MarginTrading
     let v2callback: UniswapV2CallbackModule
 
+    dataProvider = await deployDataProvider(signer)
     moduleManager = await new OneDeltaModuleManager__factory(signer).deploy()
     accountInit = await new AccountInit__factory(signer).deploy()
     delegatorModule = await new DelegatorModule__factory(signer).deploy()
@@ -455,7 +456,7 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, uni
     moneyMarketModule = await new MoneyMarketModule__factory(signer).deploy(uniV3factory.address, weth.address, minimalRouter.address)
     SweeperModule = await new SweeperModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, minimalRouter.address)
     v2callback = await new UniswapV2CallbackModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
-    v2module = await new MarginTrading__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
+    v2module = await new MarginTrading__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative, dataProvider.address)
     callbackModule = await new UniswapV3CallbackModule__factory(signer).deploy(uniV2Factory, uniV3factory.address, weth.address, cNative)
 
     await moduleManager.connect(signer).configureModules(
@@ -524,7 +525,6 @@ export async function accountFactoryFixtureInclV2(signer: SignerWithAddress, uni
     //     }]
     // )
 
-    dataProvider = await deployDataProvider(signer)
 
     const diamondDeployerLogic = await new OneDeltaAccountFactory__factory(signer).deploy()
 

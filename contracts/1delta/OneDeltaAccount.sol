@@ -14,19 +14,10 @@ contract OneDeltaAccount {
     // provider is immutable and therefore stored in the bytecode
     address private immutable MODULE_PROVIDER;
 
-    function moduleProvider() external view returns (IModuleProvider) {
-        return IModuleProvider(MODULE_PROVIDER);
-    }
-
     // the constructor only initializes the module provider
     // the modules are provided by views in this module provider contract
-    // the  cut module is not existing in this contract, it is implemented in the provider
+    // the cut module is not existing in this contract, it is implemented in the provider
     constructor(address provider) {
-        GeneralStorage storage ds = LibGeneral.generalStorage();
-        // we put the provider in the  storage, too
-        ds.moduleProvider = provider;
-        ds.factory = msg.sender;
-
         // assign immutable
         MODULE_PROVIDER = provider;
     }
@@ -60,12 +51,12 @@ contract OneDeltaAccount {
         address moduleSlot = MODULE_PROVIDER;
         assembly {
             // 1) FETCH MODULE
-            // Get the free memory address with the free memory pointer
-            let params := mload(0x40)
+            // Get the scrap space pointer
+            let params := mload(0)
 
             // We store 0x24 bytes, so we increment the free memory pointer
             // by that exact amount to keep things in order
-            mstore(0x40, add(params, 0x24))
+            mstore(0, add(params, 0x24))
 
             // Store fnSig (=bytes4(abi.encodeWithSignature("selectorToModule(bytes4)"))) at params
             // - here we store 32 bytes : 4 bytes of fnSig and 28 bytes of RIGHT padding
@@ -83,7 +74,7 @@ contract OneDeltaAccount {
             let success := staticcall(5000, moduleSlot, params, 0x24, params, 0x20)
 
             if iszero(success) {
-                revert(params, 0x40)
+                revert(params, 0)
             }
 
             // overwrite the moduleSlot parameter with the fetched module address (if valid)

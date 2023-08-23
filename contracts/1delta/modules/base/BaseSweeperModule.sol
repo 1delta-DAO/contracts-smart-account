@@ -127,7 +127,7 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, TokenTra
     function swapAndRepayAllOut(AllOutputMultiParamsBase calldata params) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
         MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 12, exactIn: false});
-        cs().cachedAddress = msg.sender;
+        acs().cachedAddress = msg.sender;
         uint256 amountOut = borrowBalanceCurrent(tokenOut);
         bool zeroForOne = tokenIn < tokenOut;
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
@@ -138,9 +138,9 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, TokenTra
             abi.encode(data)
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
-        cs().cachedAddress = DEFAULT_ADDRESS_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
+        acs().cachedAddress = DEFAULT_ADDRESS_CACHED;
         require(params.amountInMaximum >= amountIn, "Had to pay too much");
 
         // deposit received amount to the lending protocol on behalf of user
@@ -182,8 +182,8 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, TokenTra
             path
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountInMaximum >= amountIn, "Had to borrow too much");
     }
 
@@ -202,8 +202,8 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, TokenTra
             path
         );
 
-        amountOut = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountOut = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountOutMinimum <= amountOut, "Deposited too little");
     }
 
@@ -224,8 +224,8 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, TokenTra
             path
         );
 
-        amountOut = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountOut = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountOutMinimum <= amountOut, "Repaid too little");
     }
 
@@ -242,8 +242,8 @@ abstract contract BaseSweeperModule is WithStorage, BaseLendingHandler, TokenTra
             path
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountInMaximum >= amountIn, "Had to pay too much");
     }
 }

@@ -48,8 +48,8 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
             path
         );
 
-        amountOut = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountOut = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountOutMinimum <= amountOut, "Repaid too little");
     }
 
@@ -71,8 +71,8 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
             path
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountInMaximum >= amountIn, "Had to borrow too much");
     }
 
@@ -93,8 +93,8 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
             path
         );
 
-        amountOut = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountOut = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountOutMinimum <= amountOut, "Deposited too little");
     }
 
@@ -116,8 +116,8 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
             path
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountInMaximum >= amountIn, "Had to withdraw too much");
     }
 
@@ -139,8 +139,8 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
             path
         );
 
-        amountOut = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountOut = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountOutMinimum <= amountOut, "Deposited too little");
     }
 
@@ -162,8 +162,8 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
             path
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountInMaximum >= amountIn, "Had to borrow too much");
     }
 
@@ -185,8 +185,8 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
             path
         );
 
-        amountOut = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountOut = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountOutMinimum <= amountOut, "Repaid too little");
     }
 
@@ -206,8 +206,8 @@ contract MarginTraderModule is WithStorage, BaseSwapper {
             path
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         require(amountInMaximum >= amountIn, "Had to withdraw too much");
     }
 }

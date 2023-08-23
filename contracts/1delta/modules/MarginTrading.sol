@@ -24,13 +24,17 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
     error Slippage();
 
     uint256 private constant DEFAULT_AMOUNT_CACHED = type(uint256).max;
+    address private immutable DATA_PROVIDER;
 
     constructor(
         address _factoryV2,
         address _factoryV3,
         address _nativeWrapper,
-        address _cNative
-    ) LendingInteractions(_cNative, _nativeWrapper) BaseSwapper(_factoryV2, _factoryV3) {}
+        address _cNative,
+        address _dataProvider
+    ) LendingInteractions(_cNative, _nativeWrapper) BaseSwapper(_factoryV2, _factoryV3) {
+        DATA_PROVIDER = _dataProvider;
+    }
 
     // Exact Input Swap - The path parameters determine the lending actions
     function swapExactIn(
@@ -51,7 +55,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
 
         // uniswapV2 style
         if (identifier == 0) {
-            cs().amount = amountIn;
+            ncs().amount = amountIn;
             address pool = pairAddress(tokenIn, tokenOut);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne
                 ? (uint256(0), getAmountOutDirect(pool, zeroForOne, amountIn))
@@ -70,8 +74,8 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                 path
             );
         }
-        amountOut = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountOut = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         if (amountOutMinimum > amountOut) revert Slippage();
     }
 
@@ -107,8 +111,8 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                 path
             );
         }
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
         if (amountInMaximum < amountIn) revert Slippage();
     }
 
@@ -179,7 +183,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                     _transferERC20Tokens(tokenOut, msg.sender, amountToPay);
                 }
                 // cache amount
-                cs().amount = amountToPay;
+                ncs().amount = amountToPay;
             }
             return;
         }
@@ -204,7 +208,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                     cache = _data.length;
                 }
                 // cache amount
-                cs().amount = amountToSwap;
+                ncs().amount = amountToSwap;
                 address cIn;
                 (cIn, tokenOut) = cTokenPair(tokenIn, tokenOut);
                 // 6 is mint / deposit
@@ -246,7 +250,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                     flashSwapExactOut(amountInLastPool, _data);
                 } else {
                     // cache amount
-                    cs().amount = amountInLastPool;
+                    ncs().amount = amountInLastPool;
                     tokenIn = cTokenAddress(tokenOut);
                     // fetch the flag for closing the trade
                     assembly {
@@ -369,7 +373,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                     _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
                 }
                 // cache amount
-                cs().amount = referenceAmount;
+                ncs().amount = referenceAmount;
             }
             return;
         }
@@ -377,7 +381,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
             // the swap amount is expected to be the nonzero output amount
             // since v2 does not send the input amount as parameter, we have to fetch
             // the other amount manually through the cache
-            (uint256 amountToSwap, uint256 amountToBorrow) = zeroForOne ? (amount1, cs().amount) : (amount0, cs().amount);
+            (uint256 amountToSwap, uint256 amountToBorrow) = zeroForOne ? (amount1, ncs().amount) : (amount0, ncs().amount);
             if (cache > 46) {
                 // we need to swap to the token that we want to supply
                 // the router returns the amount that we can finally supply to the protocol
@@ -389,7 +393,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                 cache = data.length;
             }
             // cache amount
-            cs().amount = amountToSwap;
+            ncs().amount = amountToSwap;
             (pool, tokenOut) = cTokenPair(tokenIn, tokenOut);
             // 6 is mint / deposit
             if (tradeId == 6) {
@@ -430,7 +434,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                 flashSwapExactOut(referenceAmount, data);
             } else {
                 // cache amount
-                cs().amount = referenceAmount;
+                ncs().amount = referenceAmount;
                 tokenIn = cTokenAddress(tokenOut);
                 // fetch the flag for closing the trade
                 assembly {
@@ -468,10 +472,10 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
     }
 
     function cTokenPair(address underlying, address underlyingOther) internal view returns (address, address) {
-        return IDataProvider(ps().dataProvider).cTokenPair(underlying, underlyingOther);
+        return IDataProvider(DATA_PROVIDER).cTokenPair(underlying, underlyingOther);
     }
 
     function cTokenAddress(address underlying) internal view returns (address) {
-        return IDataProvider(ps().dataProvider).cTokenAddress(underlying);
+        return IDataProvider(DATA_PROVIDER).cTokenAddress(underlying);
     }
 }

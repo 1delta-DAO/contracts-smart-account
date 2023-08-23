@@ -209,7 +209,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     function swapAndSupplyExactOut(MarginSwapParamsMultiExactOut calldata params) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
         MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 12, exactIn: false});
-        cs().cachedAddress = msg.sender;
+        acs().cachedAddress = msg.sender;
         uint256 amountOut = params.amountOut;
         bool zeroForOne = tokenIn < tokenOut;
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
@@ -220,9 +220,9 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
             abi.encode(data)
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
-        cs().cachedAddress = DEFAULT_ADDRESS_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
+        acs().cachedAddress = DEFAULT_ADDRESS_CACHED;
         require(params.amountInMaximum >= amountIn, "Paid too much");
 
         // deposit received amount to the lending protocol on behalf of user
@@ -269,7 +269,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     function withdrawAndSwapExactOut(MarginSwapParamsMultiExactOut calldata params) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
         MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 14, exactIn: false});
-        cs().cachedAddress = msg.sender;
+        acs().cachedAddress = msg.sender;
         bool zeroForOne = tokenIn < tokenOut;
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
             msg.sender,
@@ -278,9 +278,9 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
             abi.encode(data)
         );
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
-        cs().cachedAddress = DEFAULT_ADDRESS_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
+        acs().cachedAddress = DEFAULT_ADDRESS_CACHED;
         require(params.amountInMaximum >= amountIn, "Had to withdraw too much");
     }
 
@@ -288,7 +288,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
         uint256 amountOut = params.amountOut;
         MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 14, exactIn: false});
-        cs().cachedAddress = msg.sender;
+        acs().cachedAddress = msg.sender;
         bool zeroForOne = tokenIn < tokenOut;
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
             address(this),
@@ -297,9 +297,9 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
             zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
             abi.encode(data)
         );
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
-        cs().cachedAddress = DEFAULT_ADDRESS_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
+        acs().cachedAddress = DEFAULT_ADDRESS_CACHED;
         require(params.amountInMaximum >= amountIn, "Had to withdraw too much");
         INativeWrapper(tokenOut).withdraw(amountOut);
         payable(msg.sender).transfer(amountOut);
@@ -333,7 +333,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     function borrowAndSwapExactOut(MarginSwapParamsMultiExactOut calldata params) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
         MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 13, exactIn: false});
-        cs().cachedAddress = msg.sender;
+        acs().cachedAddress = msg.sender;
         bool zeroForOne = tokenIn < tokenOut;
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
             msg.sender,
@@ -343,16 +343,16 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
             abi.encode(data)
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
-        cs().cachedAddress = DEFAULT_ADDRESS_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
+        acs().cachedAddress = DEFAULT_ADDRESS_CACHED;
         require(params.amountInMaximum >= amountIn, "Had to borrow too much");
     }
 
     function borrowAndSwapExactOutToETH(MarginSwapParamsMultiExactOut calldata params) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
         MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 13, exactIn: false});
-        cs().cachedAddress = msg.sender;
+        acs().cachedAddress = msg.sender;
         uint256 amountOut = params.amountOut;
         bool zeroForOne = tokenIn < tokenOut;
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
@@ -363,9 +363,9 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
             abi.encode(data)
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
-        cs().cachedAddress = DEFAULT_ADDRESS_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
+        acs().cachedAddress = DEFAULT_ADDRESS_CACHED;
         require(params.amountInMaximum >= amountIn, "Had to borrow too much");
 
         INativeWrapper(nativeWrapper).withdraw(amountOut);
@@ -398,7 +398,7 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
     function swapAndRepayExactOut(MarginSwapParamsMultiExactOut calldata params) external onlyOwner returns (uint256 amountIn) {
         (address tokenOut, address tokenIn, uint24 fee) = params.path.decodeFirstPool();
         MarginCallbackData memory data = MarginCallbackData({path: params.path, tradeType: 12, exactIn: false});
-        cs().cachedAddress = msg.sender;
+        acs().cachedAddress = msg.sender;
         uint256 amountOut = params.amountOut;
         bool zeroForOne = tokenIn < tokenOut;
         getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
@@ -409,9 +409,9 @@ abstract contract BaseMoneyMarketModule is WithStorage, BaseLendingHandler, Unis
             abi.encode(data)
         );
 
-        amountIn = cs().amount;
-        cs().amount = DEFAULT_AMOUNT_CACHED;
-        cs().cachedAddress = DEFAULT_ADDRESS_CACHED;
+        amountIn = ncs().amount;
+        ncs().amount = DEFAULT_AMOUNT_CACHED;
+        acs().cachedAddress = DEFAULT_ADDRESS_CACHED;
         require(params.amountInMaximum >= amountIn, "Had to pay too much");
 
         // deposit received amount to the lending protocol on behalf of user

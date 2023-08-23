@@ -161,7 +161,7 @@ contract UniswapV2CallbackModule is BaseSwapper, WithStorage, LendingInteraction
                     _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
                 }
                 // cache amount
-                cs().amount = referenceAmount;
+                ncs().amount = referenceAmount;
             }
             return;
         }
@@ -169,7 +169,7 @@ contract UniswapV2CallbackModule is BaseSwapper, WithStorage, LendingInteraction
             // the swap amount is expected to be the nonzero output amount
             // since v2 does not send the input amount as parameter, we have to fetch
             // the other amount manually through the cache
-            (uint256 amountToSwap, uint256 amountToBorrow) = zeroForOne ? (amount1, cs().amount) : (amount0, cs().amount);
+            (uint256 amountToSwap, uint256 amountToBorrow) = zeroForOne ? (amount1, ncs().amount) : (amount0, ncs().amount);
             if (cache > 46) {
                 // we need to swap to the token that we want to supply
                 // the router returns the amount that we can finally supply to the protocol
@@ -181,7 +181,7 @@ contract UniswapV2CallbackModule is BaseSwapper, WithStorage, LendingInteraction
                 cache = data.length;
             }
             // cache amount
-            cs().amount = amountToSwap;
+            ncs().amount = amountToSwap;
             (pool, tokenOut) = cTokenPair(tokenIn, tokenOut);
             // 6 is mint / deposit
             if (tradeId == 6) {
@@ -222,7 +222,7 @@ contract UniswapV2CallbackModule is BaseSwapper, WithStorage, LendingInteraction
                 flashSwapExactOut(referenceAmount, data);
             } else {
                 // cache amount
-                cs().amount = referenceAmount;
+                ncs().amount = referenceAmount;
                 tokenIn = cTokenAddress(tokenOut);
                 // fetch the flag for closing the trade
                 assembly {

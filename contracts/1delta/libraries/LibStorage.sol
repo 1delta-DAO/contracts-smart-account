@@ -5,7 +5,7 @@ pragma solidity ^0.8.21;
 
 struct GeneralStorage {
     address factory;
-    address moduleProvider;
+    bool initialized;
 }
 
 struct UserAccountStorage {
@@ -21,18 +21,23 @@ struct DataProviderStorage {
 }
 
 // for exact output multihop swaps
-struct Cache {
+struct NumberCache {
     uint256 amount;
+}
+
+// for exact output multihop swaps
+struct AddressCache {
     address cachedAddress;
 }
 
 library LibStorage {
     // Storage are structs where the data gets updated throughout the lifespan of the project
-    bytes32 constant DATA_PROVIDER_STORAGE = keccak256("1DeltaAccount.storage.dataProvider");
-    bytes32 constant GENERAL_STORAGE = keccak256("1DeltaAccount.storage.general");
-    bytes32 constant USER_ACCOUNT_STORAGE = keccak256("1DeltaAccount.storage.user");
-    bytes32 constant UNISWAP_STORAGE = keccak256("1DeltaAccount.storage.uniswap");
-    bytes32 constant CACHE = keccak256("1DeltaAccount.storage.cache");
+    bytes32 constant DATA_PROVIDER_STORAGE = keccak256("1deltaAccount.storage.dataProvider");
+    bytes32 constant GENERAL_STORAGE = keccak256("1deltaAccount.storage.general");
+    bytes32 constant USER_ACCOUNT_STORAGE = keccak256("1deltaAccount.storage.user");
+    bytes32 constant UNISWAP_STORAGE = keccak256("1deltaAccount.storage.uniswap");
+    bytes32 constant NUMBER_CACHE = keccak256("1deltaAccount.storage.cache.number");
+    bytes32 constant ADDRESS_CACHE = keccak256("1deltaAccount.storage.cache.address");
 
     function dataProviderStorage() internal pure returns (DataProviderStorage storage ps) {
         bytes32 position = DATA_PROVIDER_STORAGE;
@@ -63,8 +68,15 @@ library LibStorage {
         require(msg.sender == userAccountStorage().accountOwner, "Only the account owner can interact.");
     }
 
-    function cacheStorage() internal pure returns (Cache storage cs) {
-        bytes32 position = CACHE;
+    function numberCacheStorage() internal pure returns (NumberCache storage ncs) {
+        bytes32 position = NUMBER_CACHE;
+        assembly {
+            ncs.slot := position
+        }
+    }
+
+    function addressCacheStorage() internal pure returns (AddressCache storage cs) {
+        bytes32 position = ADDRESS_CACHE;
         assembly {
             cs.slot := position
         }
@@ -93,7 +105,11 @@ abstract contract WithStorage {
         return LibStorage.userAccountStorage();
     }
 
-    function cs() internal pure returns (Cache storage) {
-        return LibStorage.cacheStorage();
+    function ncs() internal pure returns (NumberCache storage) {
+        return LibStorage.numberCacheStorage();
+    }
+
+    function acs() internal pure returns (AddressCache storage) {
+        return LibStorage.addressCacheStorage();
     }
 }

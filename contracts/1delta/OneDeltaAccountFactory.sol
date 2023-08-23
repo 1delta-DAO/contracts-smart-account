@@ -54,11 +54,9 @@ contract OneDeltaAccountFactory is AccountFactoryStorageGenesis {
      */
     function createAccount(string memory _accountName, bool _enterAndSetUp) external returns (address account) {
         address owner = msg.sender; // save gas
-        require(owner != address(0), "MarginAccount: CANNOT_BE_OWNED_BY_ZERO");
-
         uint256 accountId = allAccounts.length;
         // create salt for create2
-        bytes32 _salt = keccak256(abi.encodePacked(owner, accountId));
+        bytes32 _salt = keccak256(abi.encodePacked(owner, ++nonces[owner]));
 
         // deploy contract
         account = address(new OneDeltaAccount{salt: _salt}(moduleProvider));

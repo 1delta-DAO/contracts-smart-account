@@ -94,7 +94,7 @@ contract UniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, TokenTr
                     _transferERC20Tokens(tokenOut, msg.sender, amountToPay);
                 }
                 // cache amount
-                cs().amount = amountToPay;
+                ncs().amount = amountToPay;
             }
             return;
         }
@@ -119,7 +119,7 @@ contract UniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, TokenTr
                     cache = _data.length;
                 }
                 // cache amount
-                cs().amount = amountToSwap;
+                ncs().amount = amountToSwap;
                 address cIn;
                 (cIn, tokenOut) = cTokenPair(tokenIn, tokenOut);
                 // 6 is mint / deposit
@@ -161,7 +161,7 @@ contract UniswapV3CallbackModule is IUniswapV3SwapCallback, WithStorage, TokenTr
                     flashSwapExactOut(amountInLastPool, _data);
                 } else {
                     // cache amount
-                    cs().amount = amountInLastPool;
+                    ncs().amount = amountInLastPool;
                     tokenIn = cTokenAddress(tokenOut);
                     // fetch the flag for closing the trade
                     assembly {
