@@ -79,7 +79,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         if (amountOutMinimum > amountOut) revert Slippage();
     }
 
-    // Exact Optput Swap - The path parameters determine the lending actions
+    // Exact Output Swap - The path parameters determine the lending actions
     function swapExactOut(
         uint256 amountOut,
         uint256 amountInMaximum,
@@ -176,7 +176,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                     identifier := mload(add(add(_data, 0x1), sub(cache, 1))) // identifier for borrow/withdraw
                 }
                 tradeId = identifier;
-                tokenIn = cTokenAddress(tokenOut);
+                tokenIn = cTokenAddress(tokenOut); // re-assign to rpevent using additional variable
                 // 2 at the end is borrowing
                 if (tradeId == 2) {
                     _borrow(tokenIn, amountToPay);
@@ -212,7 +212,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                 }
                 // cache amount
                 ncs().amount = amountToSwap;
-                address cIn;
+                address cIn; // we use an additional variable to fetch both tokens in one call
                 (cIn, tokenOut) = cTokenPair(tokenIn, tokenOut);
                 // 6 is mint / deposit
                 if (tradeId == 6) {
