@@ -19,7 +19,7 @@ import {
     getMoneyMarketContract,
     supplyToCompound
 } from './shared/accountFactoryFixture';
-import { encodeAggregtorPathEthers } from './shared/aggregatorPath';
+import { encodeAggregatorPathEthers } from './shared/aggregatorPath';
 import { expectToBeLess } from './shared/checkFunctions';
 import { CompoundFixture, CompoundOptions, generateCompoundFixture } from './shared/compoundFixture';
 import { expect } from './shared/expect'
@@ -201,7 +201,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address)
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action
@@ -245,7 +245,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1], // action
@@ -289,7 +289,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address)
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
@@ -330,7 +330,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => uniswap.tokens[t].address).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
@@ -372,7 +372,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         const supply0Before = await compound.cTokens[supplyTokenIndexFrom].callStatic.balanceOfUnderlying(accountAchi.address)
         const supply1Before = await compound.cTokens[supplyTokenIndexTo].callStatic.balanceOfUnderlying(accountAchi.address)
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
@@ -420,7 +420,7 @@ describe('Collateral Multi Swap operations', async () => {
 
         const borrow0Pre = await compound.cTokens[borrowTokenIndex_0].callStatic.borrowBalanceCurrent(accountBob.address)
         const borrow1Pre = await compound.cTokens[borrowTokenIndex_1].callStatic.borrowBalanceCurrent(accountBob.address)
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1], // action

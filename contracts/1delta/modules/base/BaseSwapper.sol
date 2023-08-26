@@ -326,7 +326,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
                 case 0 {
                     // Transpose if pair order is different.
                     sellReserve := mload(add(ptr, 0x20))
-                    buyReserve := mload(0xC00)
+                    buyReserve := mload(ptr)
                 }
                 default {
                     sellReserve := mload(ptr)

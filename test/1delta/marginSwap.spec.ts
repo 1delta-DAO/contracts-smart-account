@@ -20,7 +20,7 @@ import {
     getMoneyMarketAccount,
     supplyToCompound
 } from './shared/accountFactoryFixture';
-import { encodeAggregtorPathEthers } from './shared/aggregatorPath';
+import { encodeAggregatorPathEthers } from './shared/aggregatorPath';
 import { expectToBeLess } from './shared/checkFunctions';
 import { CompoundFixture, CompoundOptions, generateCompoundFixture } from './shared/compoundFixture';
 import { expect } from './shared/expect'
@@ -137,7 +137,7 @@ describe('Account based single margin swaps', async () => {
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6], // action
@@ -182,7 +182,7 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4], // action
@@ -233,7 +233,7 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
         _tokensInRoute = _tokensInRoute.reverse()
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4], // action
@@ -259,7 +259,7 @@ describe('Account based single margin swaps', async () => {
         await network.provider.send("evm_increaseTime", [3600])
         await network.provider.send("evm_mine")
 
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7], // action
@@ -308,7 +308,7 @@ describe('Account based single margin swaps', async () => {
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6], // action
@@ -328,7 +328,7 @@ describe('Account based single margin swaps', async () => {
         // execute margin swap
         await accountAlice.connect(alice).openMarginPositionExactIn(params.amountIn, params.amountOutMinimum, params.path)
 
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3], // action
@@ -387,7 +387,7 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, swapTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7], // action
@@ -430,7 +430,7 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6], // action
@@ -462,7 +462,7 @@ describe('Account based single margin swaps', async () => {
         absAccountAlice = await getAbsoluteMarginTraderAccount(alice, accountAlice.address)
 
         const repayOut = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3], // action

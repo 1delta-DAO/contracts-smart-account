@@ -38,14 +38,5 @@ contract AccountFactoryStorageGenesis is AccountFactoryBaseStorage {
     // maps user address to account set
     mapping(address => EnumerableSet.AddressSet) internal accounts;
 
-    // maps account address to user who created the account
-    mapping(address => address) public accountOwners;
-
-    // all accounts created as an array
-    address[] public allAccounts;
-
-    // flags foor validity of an account
-    mapping(address => bool) public isAccount;
-
-    mapping(address => uint256) public nonces;
+    mapping(address => uint256) public accountIds;
 }

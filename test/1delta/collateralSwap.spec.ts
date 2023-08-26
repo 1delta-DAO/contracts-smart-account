@@ -19,7 +19,7 @@ import {
     getAbsoluteMarginTraderAccount,
     supplyToCompound
 } from './shared/accountFactoryFixture';
-import { encodeAggregtorPathEthers } from './shared/aggregatorPath';
+import { encodeAggregatorPathEthers } from './shared/aggregatorPath';
 import { CompoundFixture, CompoundOptions, generateCompoundFixture } from './shared/compoundFixture';
 import { expect } from './shared/expect'
 import { ONE_18 } from './shared/marginSwapFixtures';
@@ -161,7 +161,7 @@ describe('Account based single collateral and debt swap operations', async () =>
         const routeIndexes = [borrowTokenIndex_0, borrowTokenIndex_1]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7], // action
@@ -210,7 +210,7 @@ describe('Account based single collateral and debt swap operations', async () =>
         const routeIndexes = [borrowTokenIndex_0, borrowTokenIndex_1]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3], // action
@@ -254,7 +254,7 @@ describe('Account based single collateral and debt swap operations', async () =>
         const routeIndexes = [supplyTokenIndex_0, supplyTokenIndex_1]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6], // action
@@ -296,7 +296,7 @@ describe('Account based single collateral and debt swap operations', async () =>
         const routeIndexes = [supplyTokenIndex_0, supplyTokenIndex_1]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4], // action
@@ -340,7 +340,7 @@ describe('Account based single collateral and debt swap operations', async () =>
         const routeIndexes = [supplyTokenIndex_0, supplyTokenIndex_1]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6], // action
@@ -388,7 +388,7 @@ describe('Account based single collateral and debt swap operations', async () =>
         const routeIndexes = [borrowTokenIndex_0, borrowTokenIndex_1]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3], // action

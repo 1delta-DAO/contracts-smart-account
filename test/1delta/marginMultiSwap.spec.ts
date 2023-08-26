@@ -22,7 +22,7 @@ import {
     getMoneyMarketContract,
     supplyToCompound
 } from './shared/accountFactoryFixture';
-import { encodeAggregtorPathEthers } from './shared/aggregatorPath';
+import { encodeAggregatorPathEthers } from './shared/aggregatorPath';
 import { expectToBeLess } from './shared/checkFunctions';
 import { CompoundFixture, CompoundOptions, generateCompoundFixture, ZERO } from './shared/compoundFixture';
 import { expect } from './shared/expect'
@@ -237,7 +237,7 @@ describe('Margin Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
@@ -285,7 +285,7 @@ describe('Margin Multi Swap operations', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
 
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
@@ -331,7 +331,7 @@ describe('Margin Multi Swap operations', async () => {
         const swapAmount = expandTo18Decimals(100)
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
@@ -358,7 +358,7 @@ describe('Margin Multi Swap operations', async () => {
         const borrowPre = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAchi.address)
         const supplyPre = await compound.cTokens[supplyIndex].balanceOf(accountAchi.address)
 
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action
@@ -397,7 +397,7 @@ describe('Margin Multi Swap operations', async () => {
         const swapAmount = expandTo18Decimals(100)
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
@@ -425,7 +425,7 @@ describe('Margin Multi Swap operations', async () => {
 
         const repayOut = expandTo18Decimals(90)
 
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1,], // action
@@ -464,7 +464,7 @@ describe('Margin Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
@@ -510,7 +510,7 @@ describe('Margin Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
@@ -556,7 +556,7 @@ describe('Margin Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0,], // action
@@ -601,7 +601,7 @@ describe('Margin Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
@@ -645,7 +645,7 @@ describe('Margin Multi Swap operations', async () => {
 
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
@@ -668,7 +668,7 @@ describe('Margin Multi Swap operations', async () => {
         const borrowPre = await compound.cTokens[borrowIndex].callStatic.borrowBalanceCurrent(accountAchi.address)
         const supplyPre = await compound.cEther.balanceOf(accountAchi.address)
 
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action
@@ -709,7 +709,7 @@ describe('Margin Multi Swap operations', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t]).reverse()
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
 
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [4, 1, 1], // action
@@ -731,7 +731,7 @@ describe('Margin Multi Swap operations', async () => {
         const borrowPre = await compound.cEther.callStatic.borrowBalanceCurrent(accountGabi.address)
         const supplyPre = await compound.cTokens[supplyIndex].balanceOf(accountGabi.address)
 
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action
@@ -784,7 +784,7 @@ describe('Margin Multi Swap operations', async () => {
 
         const supplyPre = await compound.cTokens[swapInIndex].balanceOf(accountGabiAlt.address)
 
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1,], // action
@@ -834,7 +834,7 @@ describe('Margin Multi Swap operations', async () => {
         await network.provider.send("evm_mine")
 
         const borrowPre = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAchiAlt.address)
-        const pathTrim = encodeAggregtorPathEthers(
+        const pathTrim = encodeAggregatorPathEthers(
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [7, 0, 0], // action

@@ -116,13 +116,19 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         if (amountInMaximum < amountIn) revert Slippage();
     }
 
-    // path identification
+    // PATH IDENTIFICATION
+    // [between pools if more than one]
     // 0: exact input swap
-    // 1 exact output swap - flavored by the id given at the end of the path
-    // 4: borrow
+    // 1: exact output swap - flavored by the id given at the end of the path
+    // [end flag]
+    // 2: borrow
     // 3: withdraw
-    // 5: deposit funds
-    // 6: repay funds
+    // [start flag (>1)]
+    // 6: deposit exact in
+    // 7: repay exact in
+
+    // 3: deposit exact out
+    // 4: repay exact out
 
     // The uniswapV3 style callback
     function uniswapV3SwapCallback(
@@ -170,18 +176,15 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                     identifier := mload(add(add(_data, 0x1), sub(cache, 1))) // identifier for borrow/withdraw
                 }
                 tradeId = identifier;
-
-                if (tradeId == 6) {
-                    tokenIn = cTokenAddress(tokenOut);
-                    // borrow and repay pool
+                tokenIn = cTokenAddress(tokenOut);
+                // 2 at the end is borrowing
+                if (tradeId == 2) {
                     _borrow(tokenIn, amountToPay);
-                    _transferERC20Tokens(tokenOut, msg.sender, amountToPay);
                 } else {
-                    tokenIn = cTokenAddress(tokenOut);
-                    // withraw and send funds to the pool
+                    // otherwise: withdraw
                     _redeemUnderlying(tokenIn, amountToPay);
-                    _transferERC20Tokens(tokenOut, msg.sender, amountToPay);
                 }
+                _transferERC20Tokens(tokenOut, msg.sender, amountToPay);
                 // cache amount
                 ncs().amount = amountToPay;
             }
@@ -223,25 +226,23 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                     identifier := mload(add(add(_data, 0x1), sub(cache, 1)))
                 }
                 tradeId = identifier;
-                // 6 is borrow
-                if (tradeId == 6) {
+                // 2 is borrow
+                if (tradeId == 2) {
                     _borrow(cIn, amountToRepayToPool);
-                    _transferERC20Tokens(tokenIn, msg.sender, amountToRepayToPool);
                 } else {
-                    // withraw and send funds to the pool
                     _redeemUnderlying(cIn, amountToRepayToPool);
-                    _transferERC20Tokens(tokenIn, msg.sender, amountToRepayToPool);
                 }
+                _transferERC20Tokens(tokenIn, msg.sender, amountToRepayToPool);
             } else {
                 // exact out
                 (uint256 amountInLastPool, uint256 amountToSupply) = amount0Delta > 0
                     ? (uint256(amount0Delta), uint256(-amount1Delta))
                     : (uint256(amount1Delta), uint256(-amount0Delta));
-                // 4 is deposit
-                if (tradeId == 4) {
+                // 3 is deposit
+                if (tradeId == 3) {
                     _mint(cTokenAddress(tokenIn), amountToSupply);
                 } else {
-                    // 3 is repay
+                    // 4 is repay
                     _repayBorrow(cTokenAddress(tokenIn), amountToSupply);
                 }
                 // multihop if required
@@ -259,13 +260,12 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                     tradeId = identifier;
 
                     // borrow to pay pool
-                    if (tradeId == 6) {
+                    if (tradeId == 2) {
                         _borrow(tokenIn, amountInLastPool);
-                        _transferERC20Tokens(tokenOut, msg.sender, amountInLastPool);
                     } else {
                         _redeemUnderlying(tokenIn, amountInLastPool);
-                        _transferERC20Tokens(tokenOut, msg.sender, amountInLastPool);
                     }
+                    _transferERC20Tokens(tokenOut, msg.sender, amountInLastPool);
                 }
             }
             return;
@@ -361,17 +361,13 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                 }
                 tradeId = identifier;
 
-                if (tradeId == 6) {
-                    tokenIn = cTokenAddress(tokenOut);
-                    // borrow and repay pool
+                tokenIn = cTokenAddress(tokenOut);
+                if (tradeId == 2) {
                     _borrow(tokenIn, referenceAmount);
-                    _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
                 } else {
-                    tokenIn = cTokenAddress(tokenOut);
-                    // withraw and send funds to the pool
                     _redeemUnderlying(tokenIn, referenceAmount);
-                    _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
                 }
+                _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
                 // cache amount
                 ncs().amount = referenceAmount;
             }
@@ -407,26 +403,24 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                 identifier := mload(add(add(data, 0x1), sub(cache, 1)))
             }
             tradeId = identifier;
-            // 6 is borrow
-            if (tradeId == 6) {
+            // 2 is borrow
+            if (tradeId == 2) {
                 _borrow(pool, amountToBorrow);
-                _transferERC20Tokens(tokenIn, msg.sender, amountToBorrow);
             } else {
-                // withraw and send funds to the pool
                 _redeemUnderlying(pool, amountToBorrow);
-                _transferERC20Tokens(tokenIn, msg.sender, amountToBorrow);
             }
+            _transferERC20Tokens(tokenIn, msg.sender, amountToBorrow);
         } else {
             // fetch amountOut
             uint256 referenceAmount = zeroForOne ? amount0 : amount1;
-            // 4 is deposit
-            if (tradeId == 4) {
+            // 3 is deposit
+            if (tradeId == 3) {
                 _mint(cTokenAddress(tokenIn), referenceAmount);
             } else {
-                // 3 is repay
+                // 4 is repay
                 _repayBorrow(cTokenAddress(tokenIn), referenceAmount);
             }
-            // calcultae amountIn
+            // calculate amountIn
             referenceAmount = getAmountInDirect(pool, zeroForOne, referenceAmount);
             // constinue swapping if more data is provided
             if (cache > 46) {
@@ -443,13 +437,12 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
                 tradeId = identifier;
 
                 // borrow to pay pool
-                if (tradeId == 6) {
+                if (tradeId == 2) {
                     _borrow(tokenIn, referenceAmount);
-                    _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
                 } else {
                     _redeemUnderlying(tokenIn, referenceAmount);
-                    _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
                 }
+                _transferERC20Tokens(tokenOut, msg.sender, referenceAmount);
             }
         }
     }

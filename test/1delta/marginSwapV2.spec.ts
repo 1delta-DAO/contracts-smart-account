@@ -4,7 +4,8 @@ import { ethers, network } from 'hardhat'
 import {
     SweeperModule,
     MarginTraderModule,
-    UniswapV2CallbackModule
+    UniswapV2CallbackModule,
+    MarginTrading
 } from '../../types';
 import { FeeAmount } from '../uniswap-v3/periphery/shared/constants';
 import { expandTo18Decimals } from '../uniswap-v3/periphery/shared/expandTo18Decimals';
@@ -21,7 +22,7 @@ import {
     getMoneyMarketAccount,
     supplyToCompound
 } from './shared/accountFactoryFixture';
-import { encodeAggregtorPathEthers } from './shared/aggregatorPath';
+import { encodeAggregatorPathEthers } from './shared/aggregatorPath';
 import { expectToBeLess } from './shared/checkFunctions';
 import { CompoundFixture, CompoundOptions, generateCompoundFixture } from './shared/compoundFixture';
 import { expect } from './shared/expect'
@@ -43,7 +44,7 @@ describe('Account based single margin swaps', async () => {
     let uniswap: UniswapFixture
     let compound: CompoundFixture
     let opts: CompoundOptions
-    let accountAlice: MarginTraderModule & UniswapV2CallbackModule
+    let accountAlice: MarginTrading
     let absAccountAlice: SweeperModule
     let accountFixture: AccountFactoryFixtureWithV2
     let tokenAddresses: string[]
@@ -207,12 +208,12 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6], // action
             [0], // pid
-            6 // flag
+            2 // flag
         )
 
         const params = {
@@ -254,12 +255,12 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, 1, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0], // action
             [0, 0], // pid
-            6 // flag
+            2 // flag
         )
 
         const params = {
@@ -301,12 +302,12 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, 1, 2, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
             [0, 0, 0], // pid
-            6 // flag
+            2 // flag
         )
 
         const params = {
@@ -348,12 +349,12 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, 1, 2, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
             [0, 1, 0], // pid
-            6 // flag
+            2 // flag
         )
 
         const params = {
@@ -396,12 +397,12 @@ describe('Account based single margin swaps', async () => {
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
-            [4], // action
+            [3], // action
             [0], // pid
-            6 // flag
+            2 // flag
         )
         // const pair = await accountAlice.pairAddressExt(uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
         // const val = await accountAlice.getAmountInByPool('450000000000000000000', pair, false)
@@ -448,12 +449,12 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
-            [4, 1], // action
+            [3, 1], // action
             [0, 0], // pid
-            6 // flag
+            2 // flag
         )
         // const pair = await accountAlice.pairAddressExt(uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
         // const val = await accountAlice.getAmountInByPool('450000000000000000000', pair, false)
@@ -500,12 +501,12 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
-            [4, 1, 1], // action
+            [3, 1, 1], // action
             [0, 0, 0], // pid
-            6 // flag
+            2 // flag
         )
         // const pair = await accountAlice.pairAddressExt(uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
         // const val = await accountAlice.getAmountInByPool('450000000000000000000', pair, false)
@@ -552,12 +553,12 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
-            [4, 1, 1], // action
+            [3, 1, 1], // action
             [0, 1, 0], // pid
-            6 // flag
+            2 // flag
         )
         // const pair = await accountAlice.pairAddressExt(uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
         // const val = await accountAlice.getAmountInByPool('450000000000000000000', pair, false)
@@ -604,12 +605,12 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregtorPathEthers(
+        const path = encodeAggregatorPathEthers(
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
-            [4, 1, 1], // action
+            [3, 1, 1], // action
             [1, 0, 1], // pid
-            6 // flag
+            2 // flag
         )
         // const pair = await accountAlice.pairAddressExt(uniswap.tokens[supplyTokenIndex].address, uniswap.tokens[borrowTokenIndex].address)
         // const val = await accountAlice.getAmountInByPool('450000000000000000000', pair, false)
@@ -963,26 +964,17 @@ describe('Account based single margin swaps', async () => {
 // ·······························································································|···························|·················|······························
 // |  Methods                                                                                                                                                                 │
 // ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapExactIn           ·     567037  ·     608182  ·         580757  ·            3  ·          -  │
-// ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapExactOut          ·     567383  ·     567385  ·         567384  ·            2  ·          -  │
-// ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapExactIn           ·          -  ·          -  ·         498829  ·            1  ·          -  │
-// ························································|······································|·············|·············|·················|···············|··············
-// |  MarginTraderModule                                   ·  swapExactOut          ·          -  ·          -  ·         484102  ·            1  ·          -  │
-// ························································|······································|·············|·············|·················|···············|··············
 // |  SweeperModule                                        ·  trimMarginPositionAllIn             ·          -  ·          -  ·         505310  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
 // |  SweeperModule                                        ·  trimMarginPositionAllOut            ·          -  ·          -  ·         485414  ·            1  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
 
-// ························································|······································|·············|·············|·················|···············|··············
-// |  UniswapV2CallbackModule                              ·  swapExactIn         ·     601664  ·     694153  ·         645105  ·            3  ·          -  │
-// ························································|······································|·············|·············|·················|···············|··············
-// |  UniswapV2CallbackModule                              ·  swapExactOut        ·     551624  ·     668786  ·         610216  ·            3  ·          -  │
-// ························································|······································|·············|·············|·················|···············|··············
 
 
-
+// ························································|······································|·············|·············|·················|···············|··············
+// |  MarginTrading                                        ·  swapExactIn                         ·     599591  ·     695433  ·         656095  ·            4  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+// |  MarginTrading                                        ·  swapExactOut                        ·     549328  ·     693336  ·         637367  ·            5  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
 
 

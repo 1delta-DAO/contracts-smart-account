@@ -30,7 +30,8 @@ contract DelegatorModule is WithStorage {
     }
 
     function transferAccountOwnership(address _newOwner) external onlyOwner {
-        IAccountFactory(gs().factory).handleTransferAccount(_newOwner);
+        address newOwner = _newOwner;
+        IAccountFactory(gs().factory).handleTransferAccount(us().accountOwner, newOwner);
         us().previousAccountOwner = us().accountOwner;
         us().accountOwner = _newOwner;
     }
