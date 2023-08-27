@@ -91,6 +91,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         uint8 identifier;
         assembly {
             tokenOut := div(mload(add(path, 0x20)), 0x1000000000000000000000000)
+            identifier := mload(add(add(path, 0x1), 23)) // identifier for poolId
             tokenIn := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
             zeroForOne := lt(tokenIn, tokenOut)
         }
