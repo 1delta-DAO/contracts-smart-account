@@ -47,7 +47,6 @@ contract OneDeltaAccount {
     // Find module for function that is called and execute the
     // function if a module is found and return any value.
     fallback() external payable {
-        bytes4 callSignature = msg.sig;
         address moduleSlot = MODULE_PROVIDER;
         assembly {
             // 1) FETCH MODULE
@@ -63,7 +62,13 @@ contract OneDeltaAccount {
             mstore(params, 0xd88f725a00000000000000000000000000000000000000000000000000000000)
 
             // Store callSignature at params + 0x4 : overwriting the 28 bytes of RIGHT padding included before
-            mstore(add(params, 0x4), callSignature)
+            mstore(
+                add(params, 0x4),
+                mul(
+                    div(calldataload(0), 0x100000000000000000000000000000000000000000000000000000000),
+                    0x100000000000000000000000000000000000000000000000000000000
+                )
+            )
 
             // gas : 5000 for module fetch
             // address : moduleSlot -> moduleProvider

@@ -6,17 +6,9 @@ pragma solidity 0.8.21;
 * Author: Achthar | 1delta 
 /******************************************************************************/
 
-import {SafeCast} from "../../dex-tools/uniswap/core/SafeCast.sol";
 import {IUniswapV3Pool} from "../../dex-tools/uniswap/core/IUniswapV3Pool.sol";
 import {IUniswapV2Pair} from "../../../external-protocols/uniswapV2/core/interfaces/IUniswapV2Pair.sol";
-import {ISwapRouter} from "../../dex-tools/uniswap/interfaces/ISwapRouter.sol";
-import {PeripheryValidation} from "../../dex-tools/uniswap/base/PeripheryValidation.sol";
-import {PeripheryPaymentsWithFee} from "../../dex-tools/uniswap/base/PeripheryPaymentsWithFee.sol";
 import {BytesLib} from "../../dex-tools/uniswap/libraries/BytesLib.sol";
-import {PoolAddressCalculator} from "../../dex-tools/uniswap/libraries/PoolAddressCalculator.sol";
-import {CallbackValidation} from "../../dex-tools/uniswap/libraries/CallbackValidation.sol";
-import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
-import {IERC20} from "../../interfaces/IERC20.sol";
 import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
 import {BaseDecoder} from "./BaseDecoder.sol";
 
@@ -28,7 +20,6 @@ import {BaseDecoder} from "./BaseDecoder.sol";
  */
 abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
     using BytesLib for bytes;
-    using SafeCast for uint256;
 
     /// @dev Mask of lower 20 bytes.
     uint256 private constant ADDRESS_MASK = 0x00ffffffffffffffffffffffffffffffffffffffff;
@@ -46,7 +37,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
     bytes32 private constant UNI_POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
     bytes32 private immutable UNI_V2_FF_FACTORY;
-    bytes32 private constant CODE_HASH_UNI_V2 = 0xf2a343db983032be4e17d2d9d614e0dd9a305aed3083e6757c5bb8e2ab607abe;
+    bytes32 private constant CODE_HASH_UNI_V2 = 0x1a39f3b48bfeecc839ed1f8018cb533055200a40a7e19ef735744ed10ec18cb2;
 
     constructor(address _factoryV2, address _factoryV3) {
         // V3 factory
@@ -119,7 +110,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             (int256 amount0, int256 amount1) = getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
                 address(this),
                 zeroForOne,
-                amountIn.toInt256(),
+                int256(amountIn),
                 zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
                 sliceFirstPool(_data)
             );
@@ -149,11 +140,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
                 tokenOut := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
             }
             // uniswapV2 style
-            if (identifier == 0) {
-                amountIn = swapUniV2ExactIn(tokenIn, tokenOut, amountIn);
-            }
-            // uniswapV3 style
-            else if (identifier == 1) {
+            if (identifier < 10) {
                 uint24 fee;
                 assembly {
                     fee := mload(add(add(path, 0x3), 20))
@@ -168,6 +155,10 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
                 );
 
                 amountIn = uint256(-(zeroForOne ? amount1 : amount0));
+            }
+            // uniswapV3 style
+            else if (identifier < 20) {
+                amountIn = swapUniV2ExactIn(tokenIn, tokenOut, amountIn);
             }
             // decide whether to continue or terminate
             if (path.length > 46) {
@@ -350,20 +341,8 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             tokenIn := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
         }
 
-        // uniswapV2 style
-        if (identifier == 0) {
-            bool zeroForOne = tokenIn < tokenOut;
-            // get next pool
-            address pool = pairAddress(tokenIn, tokenOut);
-            uint256 amountOut0;
-            uint256 amountOut1;
-            // amountOut0, cache
-            (amountOut0, amountOut1) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
-            IUniswapV2Pair(pool).swap(amountOut0, amountOut1, address(this), data); // cannot swap to sender due to flashSwap
-            _transferERC20Tokens(tokenOut, msg.sender, amountOut);
-        }
         // uniswapV3 style
-        else if (identifier == 1) {
+        if (identifier < 10) {
             bool zeroForOne = tokenIn < tokenOut;
             uint24 fee;
             assembly {
@@ -376,6 +355,18 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
                 zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
                 data
             );
+        }
+        // uniswapV2 style
+        else if (identifier < 20) {
+            bool zeroForOne = tokenIn < tokenOut;
+            // get next pool
+            address pool = pairAddress(tokenIn, tokenOut);
+            uint256 amountOut0;
+            uint256 amountOut1;
+            // amountOut0, cache
+            (amountOut0, amountOut1) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
+            IUniswapV2Pair(pool).swap(amountOut0, amountOut1, address(this), data); // cannot swap to sender due to flashSwap
+            _transferERC20Tokens(tokenOut, msg.sender, amountOut);
         }
     }
 
