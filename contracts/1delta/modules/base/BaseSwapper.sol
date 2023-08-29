@@ -92,58 +92,24 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         }
     }
 
-    /// @dev deprecated uniswapV3 exat input swapper
-    function exactInputToSelf(uint256 amountIn, bytes memory _data) internal returns (uint256 amountOut) {
-        while (true) {
-            address tokenIn;
-            address tokenOut;
-            uint24 fee;
-            uint8 pId;
-            assembly {
-                tokenIn := div(mload(add(add(_data, 0x20), 0)), 0x1000000000000000000000000)
-                fee := mload(add(add(_data, 0x3), 20))
-                pId := mload(add(add(_data, 0x1), 23))
-                tokenOut := div(mload(add(add(_data, 0x20), 25)), 0x1000000000000000000000000)
-            }
-
-            bool zeroForOne = tokenIn < tokenOut;
-            (int256 amount0, int256 amount1) = getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
-                address(this),
-                zeroForOne,
-                int256(amountIn),
-                zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-                sliceFirstPool(_data)
-            );
-
-            amountIn = uint256(-(zeroForOne ? amount1 : amount0));
-
-            // decide whether to continue or terminate
-            if (_data.length > 69) {
-                _data = skipToken(_data);
-            } else {
-                amountOut = amountIn;
-                break;
-            }
-        }
-    }
-
     /// @dev swaps exact input through UniswapV3 or UniswapV2 style exactIn
     /// only uniswapV3 executes flashSwaps
-    function swapExactIn(uint256 amountIn, bytes memory path) internal returns (uint256 amountOut) {
+    function swapExactIn(uint256 amountIn, bytes calldata path) internal returns (uint256 amountOut) {
         while (true) {
             address tokenIn;
             address tokenOut;
             uint8 identifier;
             assembly {
-                tokenIn := div(mload(add(add(path, 0x20), 0)), 0x1000000000000000000000000)
-                identifier := mload(add(add(path, 0x1), 23)) // identifier for poolId
-                tokenOut := div(mload(add(add(path, 0x20), 25)), 0x1000000000000000000000000)
+                let firstWord := calldataload(path.offset)
+                tokenIn := shr(96, firstWord)
+                identifier := shr(64, firstWord)
+                tokenOut := shr(96, calldataload(add(path.offset, 25)))
             }
-            // uniswapV2 style
-            if (identifier < 10) {
+            // uniswapV3 style
+            if (identifier < 50) {
                 uint24 fee;
                 assembly {
-                    fee := mload(add(add(path, 0x3), 20))
+                    fee := and(shr(72, calldataload(path.offset)), 0xffffff)
                 }
                 bool zeroForOne = tokenIn < tokenOut;
                 (int256 amount0, int256 amount1) = getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
@@ -151,18 +117,18 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
                     zeroForOne,
                     int256(amountIn),
                     zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-                    sliceFirstPool(path)
+                    path[:45]
                 );
 
                 amountIn = uint256(-(zeroForOne ? amount1 : amount0));
             }
-            // uniswapV3 style
-            else if (identifier < 20) {
+            // uniswapV2 style
+            else if (identifier < 100) {
                 amountIn = swapUniV2ExactIn(tokenIn, tokenOut, amountIn);
             }
             // decide whether to continue or terminate
             if (path.length > 46) {
-                path = skipToken(path);
+                path = path[25:];
             } else {
                 amountOut = amountIn;
                 break;
@@ -331,22 +297,23 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         }
     }
 
-    function flashSwapExactOut(uint256 amountOut, bytes memory data) internal {
+    function flashSwapExactOut(uint256 amountOut, bytes calldata data) internal {
         address tokenIn;
         address tokenOut;
         uint8 identifier;
         assembly {
-            tokenOut := div(mload(add(add(data, 0x20), 0)), 0x1000000000000000000000000)
-            identifier := mload(add(add(data, 0x1), 23)) // identifier for poolId
-            tokenIn := div(mload(add(add(data, 0x20), 25)), 0x1000000000000000000000000)
+            let firstWord := calldataload(data.offset)
+            tokenOut := shr(96, firstWord)
+            identifier := shr(64, firstWord)
+            tokenIn := shr(96, calldataload(add(data.offset, 25)))
         }
 
         // uniswapV3 style
-        if (identifier < 10) {
+        if (identifier < 50) {
             bool zeroForOne = tokenIn < tokenOut;
             uint24 fee;
             assembly {
-                fee := mload(add(add(data, 0x3), 20))
+                fee := and(shr(72, calldataload(data.offset)), 0xffffff)
             }
             getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
                 msg.sender,
@@ -357,7 +324,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             );
         }
         // uniswapV2 style
-        else if (identifier < 20) {
+        else if (identifier < 100) {
             bool zeroForOne = tokenIn < tokenOut;
             // get next pool
             address pool = pairAddress(tokenIn, tokenOut);
@@ -367,29 +334,6 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             (amountOut0, amountOut1) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
             IUniswapV2Pair(pool).swap(amountOut0, amountOut1, address(this), data); // cannot swap to sender due to flashSwap
             _transferERC20Tokens(tokenOut, msg.sender, amountOut);
-        }
-    }
-
-    // fetches first pool as bytes slice (tokenIn, tradeId, poolId, fee, tokenOut) from bytes array
-    function sliceFirstPool(bytes memory _bytes) internal pure returns (bytes memory tempBytes) {
-        assembly {
-            tempBytes := mload(0x40)
-            let lengthmod := and(45, 31)
-            let mc := add(add(tempBytes, lengthmod), mul(0x20, iszero(lengthmod)))
-            let end := add(mc, 45)
-
-            for {
-                let cc := add(add(_bytes, lengthmod), mul(0x20, iszero(lengthmod)))
-            } lt(mc, end) {
-                mc := add(mc, 0x20)
-                cc := add(cc, 0x20)
-            } {
-                mstore(mc, mload(cc))
-            }
-
-            mstore(tempBytes, 45)
-
-            mstore(0x40, and(add(mc, 31), not(31)))
         }
     }
 }
