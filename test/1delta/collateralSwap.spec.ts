@@ -24,6 +24,7 @@ import { CompoundFixture, CompoundOptions, generateCompoundFixture } from './sha
 import { expect } from './shared/expect'
 import { ONE_18 } from './shared/marginSwapFixtures';
 import { addLiquidity, uniswapFixture, UniswapFixture } from './shared/uniswapFixture';
+import { uniV2Fixture } from './shared/uniV2Fixture';
 
 
 // we prepare a setup for compound in hardhat
@@ -43,7 +44,7 @@ describe('Account based single collateral and debt swap operations', async () =>
         [deployer, alice, bob, carol] = await ethers.getSigners();
 
         uniswap = await uniswapFixture(deployer, 5)
-
+        const uniV2 = await uniV2Fixture(deployer, uniswap.weth9.address)
         opts = {
             underlyings: uniswap.tokens,
             collateralFactors: uniswap.tokens.map(x => ONE_18.mul(5).div(10)),
@@ -83,7 +84,7 @@ describe('Account based single collateral and debt swap operations', async () =>
 
         compound = await generateCompoundFixture(deployer, opts)
 
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
+        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address, uniV2.factoryV2.address)
 
         await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
         await accountFixture.dataProvider.setNativeWrapper(uniswap.weth9.address)

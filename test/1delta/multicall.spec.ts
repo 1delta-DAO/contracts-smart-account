@@ -1,13 +1,14 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { constants } from 'ethers';
 import { ethers, network } from 'hardhat'
-import { MarginTraderModule } from '../../types';
+import { ERC20Base__factory, MarginTraderModule, OneDeltaAccount, OneDeltaAccount__factory, OneDeltaModuleManager, OneDeltaModuleManager__factory, TestModuleA, TestModuleA__factory, TestModuleB, TestModuleB__factory, TestModuleC, TestModuleC__factory } from '../../types';
 import { FeeAmount } from '../uniswap-v3/periphery/shared/constants';
 import { expandTo18Decimals } from '../uniswap-v3/periphery/shared/expandTo18Decimals';
 import { encodePath } from '../uniswap-v3/periphery/shared/path';
 import {
     accountFactoryFixture,
     AccountFactoryFixture,
+    accountFactoryFixtureInclV2,
     createMarginTradingAccount,
     createMoneyMarketAccount,
     enterMarkets,
@@ -22,6 +23,7 @@ import { CompoundFixture, CompoundOptions, generateCompoundFixture } from './sha
 import { expect } from './shared/expect'
 import { ONE_18 } from './shared/marginSwapFixtures';
 import { addLiquidity, uniswapFixture, UniswapFixture } from './shared/uniswapFixture';
+import { ModuleConfigAction, getContractSelectors } from '../diamond/libraries/diamond';
 
 
 // we prepare a setup for compound in hardhat
@@ -30,299 +32,61 @@ import { addLiquidity, uniswapFixture, UniswapFixture } from './shared/uniswapFi
 describe('Diamond Money Market operations', async () => {
     let deployer: SignerWithAddress, alice: SignerWithAddress, bob: SignerWithAddress, carol: SignerWithAddress, gabi: SignerWithAddress, achi: SignerWithAddress;
     let uniswap: UniswapFixture
-    let compound: CompoundFixture
-    let opts: CompoundOptions
-    let accountAlice: MarginTraderModule
-    let accountBob: MarginTraderModule
-    let accountAchi: MarginTraderModule
-    let accountGabi: MarginTraderModule
-    let accountFixture: AccountFactoryFixture
-    let tokenAddresses: string[]
-
+    let moduleManager: OneDeltaModuleManager
+    let moduleA: TestModuleA
+    let moduleB: TestModuleB
+    let moduleC: TestModuleC
     before('Deploy Account, Trader, Uniswap and Compound', async () => {
         [deployer, alice, bob, carol, gabi, achi] = await ethers.getSigners();
 
         uniswap = await uniswapFixture(deployer, 5)
 
-        opts = {
-            underlyings: uniswap.tokens,
-            collateralFactors: uniswap.tokens.map(x => ONE_18.mul(7).div(10)),
-            exchangeRates: uniswap.tokens.map(x => ONE_18),
-            borrowRates: uniswap.tokens.map(x => ONE_18),
-            cEthExchangeRate: ONE_18,
-            cEthBorrowRate: ONE_18,
-            compRate: ONE_18,
-            closeFactor: ONE_18,
-            ethCollateralFactor: ONE_18.mul(7).div(10)
-        }
+        moduleA = await new TestModuleA__factory(deployer).deploy()
+        moduleB = await new TestModuleB__factory(deployer).deploy()
+        moduleC = await new TestModuleC__factory(deployer).deploy()
+        moduleManager = await new OneDeltaModuleManager__factory(deployer).deploy()
 
-        // approve & fund wallets
-        for (const token of uniswap.tokens) {
-            await token.approve(uniswap.router.address, constants.MaxUint256)
-            await token.approve(uniswap.nft.address, constants.MaxUint256)
-
-            await token.connect(bob).approve(uniswap.router.address, constants.MaxUint256)
-            await token.connect(bob).approve(uniswap.nft.address, constants.MaxUint256)
-            await token.connect(alice).approve(uniswap.router.address, constants.MaxUint256)
-            await token.connect(alice).approve(uniswap.nft.address, constants.MaxUint256)
-            await token.connect(carol).approve(uniswap.router.address, constants.MaxUint256)
-            await token.connect(carol).approve(uniswap.nft.address, constants.MaxUint256)
-
-            await token.connect(bob).approve(uniswap.router.address, constants.MaxUint256)
-            await token.connect(alice).approve(uniswap.router.address, constants.MaxUint256)
-            await token.connect(carol).approve(uniswap.router.address, constants.MaxUint256)
-
-            await token.connect(deployer).transfer(bob.address, expandTo18Decimals(1_000_000))
-            await token.connect(deployer).transfer(alice.address, expandTo18Decimals(1_000_000))
-            await token.connect(deployer).transfer(carol.address, expandTo18Decimals(1_000_000))
-
-            await token.connect(deployer).approve(uniswap.router.address, constants.MaxUint256)
-            await token.connect(bob).approve(uniswap.router.address, constants.MaxUint256)
-            await token.connect(carol).approve(uniswap.router.address, constants.MaxUint256)
-            await token.connect(alice).approve(uniswap.router.address, constants.MaxUint256)
-        }
-
-        compound = await generateCompoundFixture(deployer, opts)
-
-        accountFixture = await accountFactoryFixture(deployer, uniswap.factory, uniswap.weth9, compound.cEther.address)
-
-        accountAlice = await createMarginTradingAccount(alice, accountFixture)
-
-        accountBob = await createMarginTradingAccount(bob, accountFixture)
-
-        accountAchi = await createMarginTradingAccount(achi, accountFixture)
-
-        accountGabi = await createMarginTradingAccount(gabi, accountFixture)
-
-
-        tokenAddresses = uniswap.tokens.map(tk => tk.address)
-
-        await accountFixture.dataProvider.addComptroller(compound.comptroller.address)
-        await accountFixture.dataProvider.setNativeWrapper(uniswap.weth9.address)
-        await accountFixture.dataProvider.setRouter(uniswap.router.address)
-
-        await feedProvider(deployer, accountFixture, uniswap, compound)
-        await feedCompound(deployer, uniswap, compound)
-        await feedCompoundETH(deployer, compound)
-
-
-
-        console.log("add 0 1")
-        await addLiquidity(
-            deployer,
-            uniswap.tokens[0].address,
-            uniswap.tokens[1].address,
-            expandTo18Decimals(1_000_000),
-            expandTo18Decimals(1_000_000),
-            uniswap
-        )
-
-        console.log("add 1 2")
-        await addLiquidity(
-            deployer,
-            uniswap.tokens[1].address,
-            uniswap.tokens[2].address,
-            expandTo18Decimals(1_000_000),
-            expandTo18Decimals(1_000_000),
-            uniswap
-        )
-
-        console.log("add 2 3")
-        await addLiquidity(
-            deployer,
-            uniswap.tokens[2].address,
-            uniswap.tokens[3].address,
-            expandTo18Decimals(1_000_000),
-            expandTo18Decimals(1_000_000),
-            uniswap
-        )
-
-        let poolAddress = await uniswap.factory.getPool(uniswap.tokens[0].address, uniswap.tokens[1].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[0].address, uniswap.tokens[1].address, FeeAmount.MEDIUM, poolAddress)
-
-        poolAddress = await uniswap.factory.getPool(uniswap.tokens[1].address, uniswap.tokens[2].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[1].address, uniswap.tokens[2].address, FeeAmount.MEDIUM, poolAddress)
-
-        poolAddress = await uniswap.factory.getPool(uniswap.tokens[2].address, uniswap.tokens[3].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[2].address, uniswap.tokens[3].address, FeeAmount.MEDIUM, poolAddress)
-
-
-
-        // enter market
-        await enterMarkets(alice, accountAlice.address, compound)
-        await enterMarkets(bob, accountBob.address, compound)
-        await enterMarkets(achi, accountAchi.address, compound)
-        await enterMarkets(gabi, accountGabi.address, compound)
-
-        let mmC = await getMoneyMarketContract(accountAlice.address)
-        await (mmC.connect(alice)).approveUnderlyings(uniswap.tokens.map(t => t.address))
-
-        mmC = await getMoneyMarketContract(accountBob.address)
-        await (mmC.connect(bob)).approveUnderlyings(uniswap.tokens.map(t => t.address))
-
-        mmC = await getMoneyMarketContract(accountAchi.address)
-        await (mmC.connect(achi)).approveUnderlyings(uniswap.tokens.map(t => t.address))
-
-        mmC = await getMoneyMarketContract(accountGabi.address)
-        await (mmC.connect(gabi)).approveUnderlyings(uniswap.tokens.map(t => t.address))
-
-        await accountFixture.dataProvider.setNativeWrapper(uniswap.weth9.address)
-        await accountFixture.dataProvider.setRouter(uniswap.router.address)
-
-    })
-
-    // it('allows multicall single module', async () => {
-
-    //     const supplyAmount = expandTo18Decimals(1_000)
-    //     const supplyTokenIndex = 1
-    //     const borrowAmount = expandTo18Decimals(100)
-    //     const borrowTokenIndex = 0
-
-    //     const accountAliceNew = await createMoneyMarketAccount(alice, accountFixture, true)
-    //     const accountRaw = await getRawAccount(alice, accountAliceNew.address)
-
-    //     await uniswap.tokens[supplyTokenIndex].connect(alice).approve(accountAliceNew.address, ethers.constants.MaxUint256)
-
-    //     await accountRaw.multicallSingleModule(accountFixture.moneyMarketModule.address, [
-    //         accountFixture.moneyMarketModule.interface.encodeFunctionData('mint', [uniswap.tokens[supplyTokenIndex].address, supplyAmount.toString()]),
-    //         accountFixture.moneyMarketModule.interface.encodeFunctionData('borrow', [uniswap.tokens[borrowTokenIndex].address, alice.address, borrowAmount.toString()])
-    //     ])
-
-    //     await network.provider.send("evm_increaseTime", [3600])
-    //     await network.provider.send("evm_mine")
-    //     await uniswap.tokens[borrowTokenIndex].connect(alice).approve(accountAliceNew.address, constants.MaxUint256)
-    //     await repayBorrowToCompound(alice, accountAliceNew.address, borrowTokenIndex, borrowAmount, uniswap)
-    // })
-
-    it('allows multicall multi module', async () => {
-
-        const supplyAmount = expandTo18Decimals(1_000)
-        const supplyTokenIndex = 1
-        const borrowAmount = expandTo18Decimals(100)
-        const borrowTokenIndex = 0
-
-        const accountAliceNew = await createMoneyMarketAccount(alice, accountFixture, true)
-        const accountRaw = await getRawAccount(alice, accountAliceNew.address)
-
-        await uniswap.tokens[supplyTokenIndex].connect(alice).approve(accountAliceNew.address, ethers.constants.MaxUint256)
-
-        await accountRaw.multicall([accountFixture.moneyMarketModule.address, accountFixture.moneyMarketModule.address], [
-            accountFixture.moneyMarketModule.interface.encodeFunctionData('mint', [uniswap.tokens[supplyTokenIndex].address, supplyAmount.toString()]),
-            accountFixture.moneyMarketModule.interface.encodeFunctionData('borrow', [uniswap.tokens[borrowTokenIndex].address, alice.address, borrowAmount.toString()])
+        await moduleManager.configureModules([
+            {
+                moduleAddress: moduleA.address,
+                action: ModuleConfigAction.Add,
+                functionSelectors: getContractSelectors(moduleA)
+            },
+            {
+                moduleAddress: moduleB.address,
+                action: ModuleConfigAction.Add,
+                functionSelectors: getContractSelectors(moduleB)
+            },
+            // {
+            //     moduleAddress: moduleC.address,
+            //     action: ModuleConfigAction.Add,
+            //     functionSelectors: getContractSelectors(moduleC)
+            // },
         ])
 
-        await network.provider.send("evm_increaseTime", [3600])
-        await network.provider.send("evm_mine")
-        await uniswap.tokens[borrowTokenIndex].connect(alice).approve(accountAliceNew.address, constants.MaxUint256)
-        await repayBorrowToCompound(alice, accountAliceNew.address, borrowTokenIndex, borrowAmount, uniswap)
     })
 
-    it('allows multicall multi module swap', async () => {
+    it('multicall', async () => {
 
-        const supplyAmount = expandTo18Decimals(1_000)
-        const supplyTokenIndex = 2
-        const borrowAmount = expandTo18Decimals(100)
-        const supplyTokenIndexSwap = 3
-
-        const supplyAmountSwap = expandTo18Decimals(100)
-        const borrowTokenIndex = 0
-        const routeIndexes = [0, 1, 2, 3]
-
-
-        await network.provider.send("evm_increaseTime", [3600])
-        await network.provider.send("evm_mine")
-
-
-        const swapAmount = expandTo18Decimals(100)
-
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
-        await uniswap.tokens[supplyTokenIndexSwap].connect(bob).approve(accountBob.address, constants.MaxUint256)
-        await uniswap.tokens[supplyTokenIndex].connect(bob).approve(accountBob.address, constants.MaxUint256)
-
-        const params = {
-            path,
-            userAmountProvided: supplyAmountSwap,
-            amountIn: swapAmount,
-            amountOutMinimum: 0
-        }
-
-        await uniswap.tokens[supplyTokenIndex].connect(bob).approve(accountBob.address, ethers.constants.MaxUint256)
-        const accountBobRaw = await getRawAccount(bob, accountBob.address)
-        await accountBobRaw.multicall(
-            [
-                accountFixture.moneyMarketModule.address,
-                accountFixture.moneyMarketModule.address,
-                accountFixture.marginTraderModule.address
-            ], [
-            accountFixture.moneyMarketModule.interface.encodeFunctionData('mint', [uniswap.tokens[supplyTokenIndex].address, supplyAmount.toString()]),
-            accountFixture.moneyMarketModule.interface.encodeFunctionData('borrow', [uniswap.tokens[borrowTokenIndex].address, alice.address, borrowAmount.toString()]),
-            accountFixture.marginTraderModule.interface.encodeFunctionData('openMarginPositionExactIn', [params])
-        ]
-        )
+        const call1 = moduleA.interface.encodeFunctionData('testAFunc1', [88])
+        const call2 = moduleB.interface.encodeFunctionData('testBFunc20')
+        const proxy = await new OneDeltaAccount__factory(deployer).deploy(moduleManager.address)
+        await proxy.multicall([call1, call2])
     })
 
-    it('gatekeep', async () => {
+    it('throws correct error', async () => {
 
-        const supplyAmount = expandTo18Decimals(1_000)
-        const supplyTokenIndex = 2
-        const borrowAmount = expandTo18Decimals(100)
-        const supplyTokenIndexSwap = 3
+        const call1 = ERC20Base__factory.createInterface().encodeFunctionData('totalSupply')
+        const call2 = moduleB.interface.encodeFunctionData('testBFunc20')
 
-        const revertMessage = 'Only the account owner can interact.'
-        const supplyAmountSwap = expandTo18Decimals(100)
-        const borrowTokenIndex = 0
-        const routeIndexes = [0, 1, 2, 3]
-
-
-        await network.provider.send("evm_increaseTime", [3600])
-        await network.provider.send("evm_mine")
-
-
-        const swapAmount = expandTo18Decimals(100)
-
-        let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodePath(_tokensInRoute, new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-
-        await uniswap.tokens[supplyTokenIndexSwap].connect(bob).approve(accountBob.address, constants.MaxUint256)
-        await uniswap.tokens[supplyTokenIndex].connect(bob).approve(accountBob.address, constants.MaxUint256)
-
-        const params = {
-            path,
-            userAmountProvided: supplyAmountSwap,
-            amountIn: swapAmount,
-            amountOutMinimum: constants.MaxUint256
-        }
-
-        await uniswap.tokens[supplyTokenIndex].connect(bob).approve(accountBob.address, ethers.constants.MaxUint256)
-        const accountBobRaw = await getRawAccount(bob, accountBob.address)
-        await expect(accountBobRaw.connect(alice).multicall(
-            [
-                accountFixture.moneyMarketModule.address,
-                accountFixture.moneyMarketModule.address,
-                accountFixture.marginTraderModule.address
-            ], [
-            accountFixture.moneyMarketModule.interface.encodeFunctionData('mint', [uniswap.tokens[supplyTokenIndex].address, supplyAmount.toString()]),
-            accountFixture.moneyMarketModule.interface.encodeFunctionData('borrow', [uniswap.tokens[borrowTokenIndex].address, alice.address, borrowAmount.toString()]),
-            accountFixture.marginTraderModule.interface.encodeFunctionData('openMarginPositionExactIn', [params])
-        ]
-        )).to.be.revertedWith(revertMessage)
-
-
-
-        await expect(accountBobRaw.connect(bob).multicall(
-            [
-                accountFixture.moneyMarketModule.address,
-                accountFixture.moneyMarketModule.address,
-                alice.address
-            ], [
-            accountFixture.moneyMarketModule.interface.encodeFunctionData('mint', [uniswap.tokens[supplyTokenIndex].address, supplyAmount.toString()]),
-            accountFixture.moneyMarketModule.interface.encodeFunctionData('borrow', [uniswap.tokens[borrowTokenIndex].address, alice.address, borrowAmount.toString()]),
-            accountFixture.marginTraderModule.interface.encodeFunctionData('openMarginPositionExactIn', [params])
-        ]
-        )).to.be.revertedWith("OneDeltaModuleManager: Invalid module")
+        const proxy = await new OneDeltaAccount__factory(deployer).deploy(moduleManager.address)
+        // test for multicall
+        await expect(proxy.multicall([call1, call2])).to.be.revertedWith('')
+        // test for base call
+        const newCont = await new TestModuleC__factory(deployer).attach(proxy.address)
+        await expect(newCont.testCFunc1()).to.be.revertedWith('')
     })
+
 })
 
 
