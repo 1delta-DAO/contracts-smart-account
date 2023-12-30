@@ -22,19 +22,6 @@ interface IDataProvider {
 
     function underlying(address _cToken) external view returns (address);
 
-    function getCollateralSwapData(
-        address _underlyingFrom,
-        address _underlyingTo,
-        uint24 _fee
-    )
-        external
-        view
-        returns (
-            ICompoundTypeCERC20 cTokenFrom,
-            ICompoundTypeCERC20 cTokenTo,
-            address swapPool
-        );
-
     function getV3Pool(
         address _underlyingFrom,
         address _underlyingTo,
