@@ -15,11 +15,10 @@ import {
     enterMarkets,
     feedCompound,
     feedProvider,
-    getAbsoluteMarginTraderAccount,
     getMoneyMarketAccount,
     supplyToCompound
 } from './shared/accountFactoryFixture';
-import { encodeAggregatorPathEthers } from './shared/aggregatorPath';
+import { encodeAggregatorDataEthers, encodeAggregatorPathEthers } from './shared/aggregatorPath';
 import { expectToBeLess } from './shared/checkFunctions';
 import { CompoundFixture, CompoundOptions, generateCompoundFixture } from './shared/compoundFixture';
 import { expect } from './shared/expect'
@@ -148,7 +147,7 @@ describe('Account based single margin swaps', async () => {
             expandTo18Decimals(1_000_000),
             uniswap
         )
-        
+
         await addLiquidity(
             deployer,
             uniswap.tokens[1].address,
@@ -195,7 +194,9 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(99).div(100).toString(),
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6], // action
@@ -216,7 +217,7 @@ describe('Account based single margin swaps', async () => {
 
 
         // execute margin swap
-        await accountAlice.connect(alice).swapExactIn(params.amountIn, params.amountOutMinimum, params.path)
+        await accountAlice.connect(alice).swapExactIn(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -242,7 +243,9 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, 1, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(99).div(100).toString(),
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0], // action
@@ -263,7 +266,7 @@ describe('Account based single margin swaps', async () => {
 
         console.log("Open multi")
         // execute margin swap
-        await accountAlice.connect(alice).swapExactIn(params.amountIn, params.amountOutMinimum, params.path)
+        await accountAlice.connect(alice).swapExactIn(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -289,7 +292,9 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, 1, 2, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(95).div(100).toString(),
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
@@ -310,7 +315,7 @@ describe('Account based single margin swaps', async () => {
 
         console.log("Open multi")
         // execute margin swap
-        await accountAlice.connect(alice).swapExactIn(params.amountIn, params.amountOutMinimum, params.path)
+        await accountAlice.connect(alice).swapExactIn(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -336,7 +341,9 @@ describe('Account based single margin swaps', async () => {
 
         const routeIndexes = [borrowTokenIndex, 1, 2, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(95).div(100).toString(),
             _tokensInRoute,
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [6, 0, 0], // action
@@ -357,7 +364,7 @@ describe('Account based single margin swaps', async () => {
 
         console.log("Open multi")
         // execute margin swap
-        await accountAlice.connect(alice).swapExactIn(params.amountIn, params.amountOutMinimum, params.path)
+        await accountAlice.connect(alice).swapExactIn(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -384,7 +391,9 @@ describe('Account based single margin swaps', async () => {
         const routeIndexes = [borrowTokenIndex, supplyTokenIndex]
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(101).div(100).toString(),
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3], // action
@@ -409,7 +418,7 @@ describe('Account based single margin swaps', async () => {
         await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
 
         // execute margin swap
-        await accountAlice.connect(alice).swapExactOut(params.amountOut, params.amountInMaximum, params.path)
+        await accountAlice.connect(alice).swapExactOut(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -436,7 +445,9 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(102).div(100).toString(),
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1], // action
@@ -461,7 +472,7 @@ describe('Account based single margin swaps', async () => {
         await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
 
         // execute margin swap
-        await accountAlice.connect(alice).swapExactOut(params.amountOut, params.amountInMaximum, params.path)
+        await accountAlice.connect(alice).swapExactOut(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -488,7 +499,9 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(104).div(100).toString(),
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1], // action
@@ -513,7 +526,7 @@ describe('Account based single margin swaps', async () => {
         await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
 
         // execute margin swap
-        await accountAlice.connect(alice).swapExactOut(params.amountOut, params.amountInMaximum, params.path)
+        await accountAlice.connect(alice).swapExactOut(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -540,7 +553,9 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(105).div(100).toString(),
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1], // action
@@ -565,7 +580,7 @@ describe('Account based single margin swaps', async () => {
         await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
 
         // execute margin swap
-        await accountAlice.connect(alice).swapExactOut(params.amountOut, params.amountInMaximum, params.path)
+        await accountAlice.connect(alice).swapExactOut(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -592,7 +607,9 @@ describe('Account based single margin swaps', async () => {
         let _tokensInRoute = routeIndexes.map(t => tokenAddresses[t])
         console.log("_tokensInRoute", _tokensInRoute)
         // const path = encodePath(_tokensInRoute.reverse(), new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM))
-        const path = encodeAggregatorPathEthers(
+        const path = encodeAggregatorDataEthers(
+            swapAmount.toString(),
+            swapAmount.mul(105).div(100).toString(),
             _tokensInRoute.reverse(),
             new Array(_tokensInRoute.length - 1).fill(FeeAmount.MEDIUM),
             [3, 1, 1], // action
@@ -617,7 +634,7 @@ describe('Account based single margin swaps', async () => {
         await accountMM.mint(uniswap.tokens[supplyTokenIndex].address, providedAmount)
 
         // execute margin swap
-        await accountAlice.connect(alice).swapExactOut(params.amountOut, params.amountInMaximum, params.path)
+        await accountAlice.connect(alice).swapExactOut(params.path)
 
         const supply0 = await compound.cTokens[supplyTokenIndex].balanceOf(accountAlice.address)
         const borrowAmount = await compound.cTokens[borrowTokenIndex].callStatic.borrowBalanceCurrent(accountAlice.address)
@@ -970,4 +987,23 @@ describe('Account based single margin swaps', async () => {
 // |  MarginTrading                                        ·  swapExactIn                         ·     596311  ·     710238  ·         659415  ·            4  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············
 // |  MarginTrading                                        ·  swapExactOut                        ·     555455  ·     673117  ·         637808  ·            5  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+
+
+// ························································|······································|·············|·············|·················|···············|··············
+// |  MarginTrading                                        ·  swapExactIn                         ·     595893  ·     709820  ·         658997  ·            4  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+// |  MarginTrading                                        ·  swapExactOut                        ·     555081  ·     672743  ·         637434  ·            5  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+
+// ························································|······································|·············|·············|·················|···············|··············
+// |  MarginTrading                                        ·  swapExactIn                         ·     595911  ·     709838  ·         659015  ·            4  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+// |  MarginTrading                                        ·  swapExactOut                        ·     555055  ·     672717  ·         637408  ·            5  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+
+// ························································|······································|·············|·············|·················|···············|··············
+// |  MarginTrading                                        ·  swapExactIn                         ·     595905  ·     709832  ·         659009  ·            4  ·          -  │
+// ························································|······································|·············|·············|·················|···············|··············
+// |  MarginTrading                                        ·  swapExactOut                        ·     555049  ·     672711  ·         637402  ·            5  ·          -  │
 // ························································|······································|·············|·············|·················|···············|··············

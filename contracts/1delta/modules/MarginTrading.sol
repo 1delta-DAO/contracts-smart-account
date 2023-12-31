@@ -10,7 +10,7 @@ import {IUniswapV2Pair} from "../../external-protocols/uniswapV2/core/interfaces
 import {IDataProvider} from "../interfaces/IDataProvider.sol";
 import {IUniswapV3SwapCallback} from "../dex-tools/uniswap/core/IUniswapV3SwapCallback.sol";
 import {TokenTransfer} from "../libraries/TokenTransfer.sol";
-import {WithStorage} from "../libraries/LibStorage.sol";
+import {WithStorage, LibStorage} from "../libraries/LibStorage.sol";
 import {LendingInteractions} from "../libraries/LendingInteractions.sol";
 import {BaseSwapper} from "./base/BaseSwapper.sol";
 
@@ -23,8 +23,14 @@ import {BaseSwapper} from "./base/BaseSwapper.sol";
 contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, LendingInteractions, BaseSwapper {
     error Slippage();
 
+    uint256 internal constant MASK_UINT128 = 0xffffffffffffffffffffffffffffffff;
     uint256 private constant DEFAULT_AMOUNT_CACHED = type(uint256).max;
     address private immutable DATA_PROVIDER;
+
+    modifier onlyOwner() {
+        LibStorage.enforceAccountOwner();
+        _;
+    }
 
     constructor(
         address _factoryV2,
@@ -37,20 +43,24 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
     }
 
     // Exact Input Swap - The path parameters determine the lending actions
-    function swapExactIn(
-        uint256 amountIn,
-        uint256 amountOutMinimum,
-        bytes calldata path
-    ) external returns (uint256 amountOut) {
+    function swapExactIn(bytes calldata data) external onlyOwner returns (uint256 amountOut) {
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        assembly {
+            let first32 := calldataload(data.offset)
+            amountIn := and(MASK_UINT128, shr(128, first32)) // (32 - 16) * 8
+            amountOutMinimum := and(MASK_UINT128, first32)
+        }
+        data = data[32:];
         address tokenIn;
         address tokenOut;
         bool zeroForOne;
         uint8 identifier;
         assembly {
-            let firstWord := calldataload(path.offset)
+            let firstWord := calldataload(data.offset)
             tokenIn := shr(96, firstWord)
             identifier := shr(64, firstWord)
-            tokenOut := shr(96, calldataload(add(path.offset, 25)))
+            tokenOut := shr(96, calldataload(add(data.offset, 25)))
             zeroForOne := lt(tokenIn, tokenOut)
         }
 
@@ -58,14 +68,14 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         if (identifier < 50) {
             uint24 fee;
             assembly {
-                fee := and(shr(72, calldataload(path.offset)), 0xffffff)
+                fee := and(shr(72, calldataload(data.offset)), 0xffffff)
             }
             getUniswapV3Pool(tokenIn, tokenOut, fee, identifier).swap(
                 address(this),
                 zeroForOne,
                 int256(amountIn),
                 zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-                path
+                data
             );
         }
         // uniswapV2 type
@@ -75,7 +85,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne
                 ? (uint256(0), getAmountOutDirect(tokenIn, zeroForOne, amountIn))
                 : (getAmountOutDirect(tokenIn, zeroForOne, amountIn), uint256(0));
-            IUniswapV2Pair(tokenIn).swap(amount0Out, amount1Out, address(this), path);
+            IUniswapV2Pair(tokenIn).swap(amount0Out, amount1Out, address(this), data);
         }
         amountOut = ncs().amount;
         ncs().amount = DEFAULT_AMOUNT_CACHED;
@@ -83,41 +93,46 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
     }
 
     // Exact Output Swap - The path parameters determine the lending actions
-    function swapExactOut(
-        uint256 amountOut,
-        uint256 amountInMaximum,
-        bytes calldata path
-    ) external returns (uint256 amountIn) {
+    function swapExactOut(bytes calldata data) external onlyOwner returns (uint256 amountIn) {
+        uint256 amountOut;
+        uint256 amountInMaximum;
+        assembly {
+            let firstWord := calldataload(data.offset)
+            amountOut := and(MASK_UINT128, shr(128, firstWord)) // (32 - 16) * 8
+            amountInMaximum := and(MASK_UINT128, firstWord)
+        }
+        data = data[32:];
+
         address tokenIn;
         address tokenOut;
         bool zeroForOne;
         uint8 identifier;
         assembly {
-            let firstWord := calldataload(path.offset)
-            tokenOut := shr(96, firstWord)
-            identifier := shr(64, firstWord)
-            tokenIn := shr(96, calldataload(add(path.offset, 25)))
+            let firstWord := calldataload(data.offset)
+            tokenOut := shr(96, firstWord) // (32 - 20) * 8
+            identifier := shr(64, firstWord) // (32 - 23) * 8
+            tokenIn := shr(96, calldataload(add(data.offset, 25)))
             zeroForOne := lt(tokenIn, tokenOut)
         }
         // uniswapV3 types
         if (identifier < 50) {
             uint24 fee;
             assembly {
-                fee := and(shr(72, calldataload(path.offset)), 0xffffff)
+                fee := and(shr(72, calldataload(data.offset)), 0xffffff)
             }
             getUniswapV3Pool(tokenIn, tokenOut, fee, identifier).swap(
                 address(this),
                 zeroForOne,
                 -int256(amountOut),
                 zeroForOne ? MIN_SQRT_RATIO : MAX_SQRT_RATIO,
-                path
+                data
             );
         }
         // uniswapV2 types
         else if (identifier < 100) {
             tokenIn = pairAddress(tokenIn, tokenOut, identifier);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
-            IUniswapV2Pair(tokenIn).swap(amount0Out, amount1Out, address(this), path);
+            IUniswapV2Pair(tokenIn).swap(amount0Out, amount1Out, address(this), data);
         }
         amountIn = ncs().amount;
         ncs().amount = DEFAULT_AMOUNT_CACHED;
@@ -139,11 +154,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
     // 4: repay exact out
 
     // The uniswapV3 style callback
-    function uniswapV3SwapCallback(
-        int256 amount0Delta,
-        int256 amount1Delta,
-        bytes calldata _data
-    ) external override {
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata _data) external override {
         uint8 identifier;
         address tokenIn;
         uint24 fee;
@@ -151,7 +162,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         uint256 tradeId;
         assembly {
             let firstWord := calldataload(_data.offset)
-            tokenIn := shr(96, firstWord)
+            tokenIn := shr(96, firstWord) // (32 - 20) * 8
             fee := and(shr(72, firstWord), 0xffffff)
             identifier := shr(64, firstWord) // poolId
             tokenOut := shr(96, calldataload(add(_data.offset, 25)))
@@ -277,11 +288,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         }
     }
 
-    function getAmountOutDirect(
-        address pair,
-        bool zeroForOne,
-        uint256 sellAmount
-    ) private view returns (uint256 buyAmount) {
+    function getAmountOutDirect(address pair, bool zeroForOne, uint256 sellAmount) private view returns (uint256 buyAmount) {
         assembly {
             // Call pair.getReserves(), store the results at `0xC00`
             mstore(0xB00, 0x0902f1ac00000000000000000000000000000000000000000000000000000000)
@@ -318,12 +325,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
     }
 
     // The uniswapV2 style callback
-    function uniswapV2Call(
-        address,
-        uint256 amount0,
-        uint256 amount1,
-        bytes calldata data
-    ) external {
+    function uniswapV2Call(address, uint256 amount0, uint256 amount1, bytes calldata data) external {
         uint8 tradeId;
         address tokenIn;
         address tokenOut;
@@ -448,11 +450,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
     /// @param token The token to pay
     /// @param payer The entity that must pay
     /// @param value The amount to pay
-    function pay(
-        address token,
-        address payer,
-        uint256 value
-    ) internal {
+    function pay(address token, address payer, uint256 value) internal {
         if (payer == address(this)) {
             // pay with tokens already in the contract (for the exact input multihop case)
             _transferERC20Tokens(token, msg.sender, value);

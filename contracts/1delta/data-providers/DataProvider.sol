@@ -25,7 +25,6 @@ contract DataProvider is DataProviderStorageGenesis {
         _;
     }
 
-
     function validatePoolAndFetchCTokens(
         address _pool,
         address _underlyingIn,

@@ -8,9 +8,7 @@ pragma solidity 0.8.23;
 
 import {IUniswapV3Pool} from "../../dex-tools/uniswap/core/IUniswapV3Pool.sol";
 import {IUniswapV2Pair} from "../../../external-protocols/uniswapV2/core/interfaces/IUniswapV2Pair.sol";
-import {BytesLib} from "../../dex-tools/uniswap/libraries/BytesLib.sol";
 import {TokenTransfer} from "../../libraries/TokenTransfer.sol";
-import {BaseDecoder} from "./BaseDecoder.sol";
 
 // solhint-disable max-line-length
 
@@ -18,8 +16,7 @@ import {BaseDecoder} from "./BaseDecoder.sol";
  * @title Uniswap Callback Base contract
  * @notice Contains main logic for uniswap callbacks
  */
-abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
-    using BytesLib for bytes;
+abstract contract BaseSwapper is TokenTransfer {
 
     /// @dev Mask of lower 20 bytes.
     uint256 private constant ADDRESS_MASK = 0x00ffffffffffffffffffffffffffffffffffffffff;
@@ -44,6 +41,12 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         UNI_V3_FF_FACTORY = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factoryV3)) << 88));
         // v2 factory
         UNI_V2_FF_FACTORY = bytes32((uint256(0xff) << 248) | (uint256(uint160(_factoryV2)) << 88));
+    }
+
+    function getLastToken(bytes calldata data) internal pure returns (address token) {
+        assembly {
+            token := shr(96, calldataload(add(data.offset, sub(data.length, 21))))
+        }
     }
 
     /// @dev Returns the pool for the given token pair and fee. The pool contract may or may not exist.

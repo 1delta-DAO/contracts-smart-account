@@ -28,6 +28,38 @@ export function encodeAggregatorPathEthers(path: string[], fees: FeeAmount[], fl
   return ethers.utils.solidityPack(types, data)
 }
 
+export function encodeAggregatorDataEthers(amount:string, amountCheck: string, path: string[], fees: FeeAmount[], flags: number[], pIds: number[], flag: number): string {
+  if (path.length != fees.length + 1) {
+    throw new Error('path/fee lengths do not match')
+  }
+  let types: string[] = []
+  let data: string[] = []
+  // amounts
+  types.push('uint128')
+  types.push('uint128')
+  data.push(amount)
+  data.push(amountCheck)
+
+  for (let i = 0; i < fees.length; i++) {
+    const p = path[i]
+    types = [...types, ...typeSliceAggregator]
+    data = [...data, p, String(fees[i]), String(pIds[i]), String(flags[i])]
+  }
+  // add last address and flag
+  types.push('address')
+  types.push('uint8')
+
+  data.push(path[path.length - 1])
+  data.push(String(flag))
+
+  // console.log(data)
+  // console.log(types)
+
+  return ethers.utils.solidityPack(types, data)
+}
+
+
+
 enum TradeOperation {
   Open = 'Open',
   Trim = 'Trim',
