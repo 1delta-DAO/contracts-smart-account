@@ -28,7 +28,6 @@ export function encodeAggregatorPathEthers(path: string[], fees: FeeAmount[], fl
   return ethers.utils.solidityPack(types, data)
 }
 
-
 enum TradeOperation {
   Open = 'Open',
   Trim = 'Trim',

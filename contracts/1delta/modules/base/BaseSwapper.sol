@@ -50,7 +50,8 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
     function getUniswapV3Pool(
         address tokenA,
         address tokenB,
-        uint24 fee
+        uint24 fee,
+        uint8
     ) internal view returns (IUniswapV3Pool pool) {
         bytes32 ffFactoryAddress = UNI_V3_FF_FACTORY;
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
@@ -71,7 +72,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
     }
 
     /// @dev gets uniswapV2 (and fork) pair addresses
-    function pairAddress(address tokenA, address tokenB) internal view returns (address pair) {
+    function pairAddress(address tokenA, address tokenB, uint8) internal view returns (address pair) {
         bytes32 ff_uni = UNI_V2_FF_FACTORY;
         assembly {
             switch lt(tokenA, tokenB)
@@ -112,7 +113,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
                     fee := and(shr(72, calldataload(path.offset)), 0xffffff)
                 }
                 bool zeroForOne = tokenIn < tokenOut;
-                (int256 amount0, int256 amount1) = getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+                (int256 amount0, int256 amount1) = getUniswapV3Pool(tokenIn, tokenOut, fee, identifier).swap(
                     address(this),
                     zeroForOne,
                     int256(amountIn),
@@ -124,7 +125,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             }
             // uniswapV2 style
             else if (identifier < 100) {
-                amountIn = swapUniV2ExactIn(tokenIn, tokenOut, amountIn);
+                amountIn = swapUniV2ExactIn(tokenIn, tokenOut, identifier, amountIn);
             }
             // decide whether to continue or terminate
             if (path.length > 46) {
@@ -140,6 +141,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
     function swapUniV2ExactIn(
         address tokenIn,
         address tokenOut,
+        uint8,
         uint256 amountIn
     ) private returns (uint256 buyAmount) {
         bytes32 ff_uni = UNI_V2_FF_FACTORY;
@@ -315,7 +317,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
             assembly {
                 fee := and(shr(72, calldataload(data.offset)), 0xffffff)
             }
-            getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+            getUniswapV3Pool(tokenIn, tokenOut, fee, identifier).swap(
                 msg.sender,
                 zeroForOne,
                 -int256(amountOut),
@@ -327,7 +329,7 @@ abstract contract BaseSwapper is TokenTransfer, BaseDecoder {
         else if (identifier < 100) {
             bool zeroForOne = tokenIn < tokenOut;
             // get next pool
-            address pool = pairAddress(tokenIn, tokenOut);
+            address pool = pairAddress(tokenIn, tokenOut, identifier);
             uint256 amountOut0;
             uint256 amountOut1;
             // amountOut0, cache

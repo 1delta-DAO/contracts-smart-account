@@ -60,7 +60,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
             assembly {
                 fee := and(shr(72, calldataload(path.offset)), 0xffffff)
             }
-            getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+            getUniswapV3Pool(tokenIn, tokenOut, fee, identifier).swap(
                 address(this),
                 zeroForOne,
                 int256(amountIn),
@@ -71,7 +71,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         // uniswapV2 type
         else if (identifier < 100) {
             ncs().amount = amountIn;
-            tokenIn = pairAddress(tokenIn, tokenOut);
+            tokenIn = pairAddress(tokenIn, tokenOut, identifier);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne
                 ? (uint256(0), getAmountOutDirect(tokenIn, zeroForOne, amountIn))
                 : (getAmountOutDirect(tokenIn, zeroForOne, amountIn), uint256(0));
@@ -105,7 +105,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
             assembly {
                 fee := and(shr(72, calldataload(path.offset)), 0xffffff)
             }
-            getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+            getUniswapV3Pool(tokenIn, tokenOut, fee, identifier).swap(
                 address(this),
                 zeroForOne,
                 -int256(amountOut),
@@ -115,7 +115,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         }
         // uniswapV2 types
         else if (identifier < 100) {
-            tokenIn = pairAddress(tokenIn, tokenOut);
+            tokenIn = pairAddress(tokenIn, tokenOut, identifier);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
             IUniswapV2Pair(tokenIn).swap(amount0Out, amount1Out, address(this), path);
         }
@@ -157,7 +157,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
             tokenOut := shr(96, calldataload(add(_data.offset, 25)))
         }
         {
-            require(msg.sender == address(getUniswapV3Pool(tokenIn, tokenOut, fee)));
+            require(msg.sender == address(getUniswapV3Pool(tokenIn, tokenOut, fee, identifier)));
         }
 
         assembly {
@@ -340,7 +340,7 @@ contract MarginTrading is IUniswapV3SwapCallback, WithStorage, TokenTransfer, Le
         }
 
         // calculate pool address
-        address pool = pairAddress(tokenIn, tokenOut);
+        address pool = pairAddress(tokenIn, tokenOut, identifier);
         {
             // validate sender
             require(msg.sender == pool);

@@ -2,7 +2,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { constants } from 'ethers';
 import { ethers, network } from 'hardhat'
 import {
-    SweeperModule,
     MarginTrading
 } from '../../types';
 import { FeeAmount } from '../uniswap-v3/periphery/shared/constants';
@@ -43,7 +42,6 @@ describe('Account based single margin swaps', async () => {
     let compound: CompoundFixture
     let opts: CompoundOptions
     let accountAlice: MarginTrading
-    let absAccountAlice: SweeperModule
     let accountFixture: AccountFactoryFixtureWithV2
     let tokenAddresses: string[]
     let uniswapV2: V2Fixture

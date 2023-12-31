@@ -87,7 +87,7 @@ contract TradingInterface is WithStorage, BaseSwapper, LendingInteractions {
         // uniswapV2 style
         if (identifier == 0) {
             ncs().amount = amountIn;
-            address pool = pairAddress(tokenIn, tokenOut);
+            address pool = pairAddress(tokenIn, tokenOut, identifier);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne
                 ? (uint256(0), getAmountOutDirect(pool, zeroForOne, amountIn))
                 : (getAmountOutDirect(pool, zeroForOne, amountIn), uint256(0));
@@ -97,7 +97,7 @@ contract TradingInterface is WithStorage, BaseSwapper, LendingInteractions {
             assembly {
                 fee := mload(add(add(path, 0x3), 20))
             }
-            getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+            getUniswapV3Pool(tokenIn, tokenOut, fee, identifier).swap(
                 address(this),
                 zeroForOne,
                 int256(amountIn),
@@ -127,7 +127,7 @@ contract TradingInterface is WithStorage, BaseSwapper, LendingInteractions {
             zeroForOne := lt(tokenIn, tokenOut)
         }
         if (identifier == 0) {
-            address pool = pairAddress(tokenIn, tokenOut);
+            address pool = pairAddress(tokenIn, tokenOut, identifier);
             (uint256 amount0Out, uint256 amount1Out) = zeroForOne ? (uint256(0), amountOut) : (amountOut, uint256(0));
             IUniswapV2Pair(pool).swap(amount0Out, amount1Out, address(this), path);
         } else if (identifier == 1) {
@@ -135,7 +135,7 @@ contract TradingInterface is WithStorage, BaseSwapper, LendingInteractions {
             assembly {
                 fee := mload(add(add(path, 0x3), 20))
             }
-            getUniswapV3Pool(tokenIn, tokenOut, fee).swap(
+            getUniswapV3Pool(tokenIn, tokenOut, fee, identifier).swap(
                 address(this),
                 zeroForOne,
                 -int256(amountOut),
