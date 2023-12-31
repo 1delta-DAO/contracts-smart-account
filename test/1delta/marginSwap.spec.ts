@@ -110,12 +110,6 @@ describe('Account based single margin swaps', async () => {
             uniswap
         )
 
-        const poolAddress = await uniswap.factory.getPool(uniswap.tokens[1].address, uniswap.tokens[0].address, FeeAmount.MEDIUM)
-
-        // add pool
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[1].address, uniswap.tokens[0].address, FeeAmount.MEDIUM, poolAddress)
-
-
     })
 
     it('allows margin swap exact in', async () => {
@@ -574,7 +568,7 @@ describe('Account based single margin swaps', async () => {
 
 
 // ·----------------------------------------------------------------------------------------------|---------------------------|-----------------|-----------------------------·
-// |                                     Solc version: 0.8.21                                     ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
+// |                                     Solc version: 0.8.23                                     ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
 // ·······························································································|···························|·················|······························
 // |  Methods                                                                                                                                                                 │
 // ························································|······································|·············|·············|·················|···············|··············

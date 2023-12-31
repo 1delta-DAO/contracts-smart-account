@@ -3,8 +3,6 @@ import { constants } from 'ethers';
 import { ethers, network } from 'hardhat'
 import {
     SweeperModule,
-    MarginTraderModule,
-    UniswapV2CallbackModule,
     MarginTrading
 } from '../../types';
 import { FeeAmount } from '../uniswap-v3/periphery/shared/constants';
@@ -179,15 +177,6 @@ describe('Account based single margin swaps', async () => {
             expandTo18Decimals(1_000_000),
             uniswap
         )
-
-
-
-        const poolAddress = await uniswap.factory.getPool(uniswap.tokens[1].address, uniswap.tokens[0].address, FeeAmount.MEDIUM)
-
-        // add pool
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[1].address, uniswap.tokens[0].address, FeeAmount.MEDIUM, poolAddress)
-
-
     })
 
     it.only('allows margin swap exact in', async () => {
@@ -960,7 +949,7 @@ describe('Account based single margin swaps', async () => {
 
 
 // ·----------------------------------------------------------------------------------------------|---------------------------|-----------------|-----------------------------·
-// |                                     Solc version: 0.8.21                                     ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
+// |                                     Solc version: 0.8.23                                     ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
 // ·······························································································|···························|·················|······························
 // |  Methods                                                                                                                                                                 │
 // ························································|······································|·············|·············|·················|···············|··············

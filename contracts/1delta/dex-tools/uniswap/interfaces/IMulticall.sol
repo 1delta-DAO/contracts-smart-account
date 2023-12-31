@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 /// @title Multicall interface
 /// @notice Enables calling multiple methods in a single call to the contract

@@ -105,19 +105,11 @@ describe('Account based single collateral and debt swap operations', async () =>
 
         let poolAddress = await uniswap.factory.getPool(uniswap.tokens[0].address, uniswap.tokens[1].address, FeeAmount.MEDIUM)
 
-        // add pool
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[0].address, uniswap.tokens[1].address, FeeAmount.MEDIUM, poolAddress)
-
-
 
         await addLiquidity(
             deployer, uniswap.tokens[0].address, uniswap.tokens[2].address, expandTo18Decimals(1_0000_000), expandTo18Decimals(1_0000_000),
             uniswap)
         poolAddress = await uniswap.factory.getPool(uniswap.tokens[2].address, uniswap.tokens[0].address, FeeAmount.MEDIUM)
-
-        // add pool
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[0].address, uniswap.tokens[2].address, FeeAmount.MEDIUM, poolAddress)
-
 
         await addLiquidity(
             deployer,
@@ -129,10 +121,6 @@ describe('Account based single collateral and debt swap operations', async () =>
         )
 
         poolAddress = await uniswap.factory.getPool(uniswap.tokens[1].address, uniswap.tokens[2].address, FeeAmount.MEDIUM)
-
-        // add pool
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[1].address, uniswap.tokens[2].address, FeeAmount.MEDIUM, poolAddress)
-
     })
 
     it('allows loan swap borrow exact in', async () => {
@@ -483,7 +471,7 @@ describe('Account based single collateral and debt swap operations', async () =>
 
 
 // ·----------------------------------------------------------------------------------------------|---------------------------|-----------------|-----------------------------·
-// |                                     Solc version: 0.8.21                                     ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
+// |                                     Solc version: 0.8.23                                     ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
 // ·······························································································|···························|·················|······························
 // |  Methods                                                                                     ·                 19 gwei/gas                 ·       1800.41 usd/eth       │
 // ························································|······································|·············|·············|·················|···············|··············

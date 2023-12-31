@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import "../../libraries/structs/EnumerableSet.sol";
 
@@ -29,7 +29,6 @@ contract DataProviderBaseStorage {
 contract DataProviderStorageGenesis is DataProviderBaseStorage {
     bool public initialized;
 
-    mapping(address => mapping(address => mapping(uint24 => address))) public v3Pools;
     mapping(address => bool) public isValidPool;
 
     // maps undelyings to cTokens

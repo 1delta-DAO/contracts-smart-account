@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import {IDataProvider, IComptroller, ICompoundTypeCERC20, ICompoundTypeCEther} from "../interfaces/IDataProvider.sol";
 import {ICompoundTypeCToken} from "../interfaces/compound/ICompoundTypeCToken.sol";

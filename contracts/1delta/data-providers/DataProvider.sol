@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import {EnumerableSet, DataProviderStorageGenesis} from "./DataProviderStorage.sol";
 import {IProxy} from "../interfaces/IProxy.sol";
@@ -25,24 +25,6 @@ contract DataProvider is DataProviderStorageGenesis {
         _;
     }
 
-    function addV3Pool(
-        address _token0,
-        address _token1,
-        uint24 _fee,
-        address _pool
-    ) external onlyAdmin {
-        v3Pools[_token0][_token1][_fee] = _pool;
-        v3Pools[_token1][_token0][_fee] = _pool;
-        isValidPool[_pool] = true;
-    }
-
-    function getV3Pool(
-        address _underlyingFrom,
-        address _underlyingTo,
-        uint24 _fee
-    ) external view returns (address) {
-        return v3Pools[_underlyingFrom][_underlyingTo][_fee];
-    }
 
     function validatePoolAndFetchCTokens(
         address _pool,

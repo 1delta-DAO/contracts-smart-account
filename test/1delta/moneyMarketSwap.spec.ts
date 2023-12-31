@@ -165,16 +165,6 @@ describe('Money Market Multi Swap operations', async () => {
             uniswap
         )
 
-        // add pools
-        let poolAddress = await uniswap.factory.getPool(uniswap.tokens[0].address, uniswap.tokens[1].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[0].address, uniswap.tokens[1].address, FeeAmount.MEDIUM, poolAddress)
-
-        poolAddress = await uniswap.factory.getPool(uniswap.tokens[1].address, uniswap.tokens[2].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[1].address, uniswap.tokens[2].address, FeeAmount.MEDIUM, poolAddress)
-
-        poolAddress = await uniswap.factory.getPool(uniswap.tokens[2].address, uniswap.tokens[3].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[2].address, uniswap.tokens[3].address, FeeAmount.MEDIUM, poolAddress)
-
         await feedProvider(deployer, accountFixture, uniswap, compound)
         await feedCompound(deployer, uniswap, compound)
 
@@ -1298,7 +1288,7 @@ describe('Money Market Multi Swap operations', async () => {
 })
 
 // ·----------------------------------------------------------------------------------------------|---------------------------|-----------------|-----------------------------·
-// |                                     Solc version: 0.8.21                                     ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
+// |                                     Solc version: 0.8.23                                     ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
 // ························································|······································|·············|·············|·················|···············|··············
 // ························································|······································|·············|·············|·················|···············|··············
 // |  MoneyMarketModule                                    ·  approveUnderlyings                  ·          -  ·          -  ·         485291  ·            5  ·          -  │

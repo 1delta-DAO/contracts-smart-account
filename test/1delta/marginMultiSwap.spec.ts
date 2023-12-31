@@ -173,19 +173,6 @@ describe('Margin Multi Swap operations', async () => {
             uniswap
         )
 
-        // add pools
-        let poolAddress = await uniswap.factory.getPool(uniswap.tokens[0].address, uniswap.tokens[1].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[0].address, uniswap.tokens[1].address, FeeAmount.MEDIUM, poolAddress)
-
-        poolAddress = await uniswap.factory.getPool(uniswap.tokens[1].address, uniswap.tokens[2].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[1].address, uniswap.tokens[2].address, FeeAmount.MEDIUM, poolAddress)
-
-        poolAddress = await uniswap.factory.getPool(uniswap.tokens[2].address, uniswap.tokens[3].address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[2].address, uniswap.tokens[3].address, FeeAmount.MEDIUM, poolAddress)
-
-        poolAddress = await uniswap.factory.getPool(uniswap.tokens[3].address, uniswap.weth9.address, FeeAmount.MEDIUM)
-        await accountFixture.dataProvider.addV3Pool(uniswap.tokens[2].address, uniswap.weth9.address, FeeAmount.MEDIUM, poolAddress)
-
         await feedProvider(deployer, accountFixture, uniswap, compound)
         await feedCompound(deployer, uniswap, compound)
         await feedCompoundETH(deployer, compound)
@@ -918,7 +905,7 @@ describe('Margin Multi Swap operations', async () => {
 })
 
 // ·------------------------------------------------------------------------------------------------|---------------------------|-----------------|-----------------------------·
-// |                                      Solc version: 0.8.21                                      ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
+// |                                      Solc version: 0.8.23                                      ·  Optimizer enabled: true  ·  Runs: 1000000  ·  Block limit: 30000000 gas  │
 // ·································································································|···························|·················|······························
 // ························································|······································|·············|·············|·················|···············|··············
 // |  MarginTraderModule                                   ·  openMarginPositionExactIn           ·     663260  ·     776713  ·         729554  ·            4  ·          -  │
